@@ -20,11 +20,9 @@
 * = $1000     "Fade in"
 start:
                 sei
-
-                // Copy char ROM to 3800-3fff
                 jsr copy_rom        
 
-                // Pring some chars on the screen
+                // Print some chars on the screen
                 ldx #$00
 l2:             txa
                 sta $0400, x
@@ -36,16 +34,7 @@ l2:             txa
                 ora #$0e
                 sta $d018
 
-                // Manipulate chars.
-                ldx #$00
-l1:             txa
-                sta $3800,x
-                inx
-                bne l1
-  
-  bajs:
-                jmp bajs
-
+                jsr init_raster_irq
                 cli
                 rts
 
@@ -61,7 +50,7 @@ l1:             txa
                 lda #$38    
                 sta $fb     
                 ldy #$00    
-                sty $f8     
+                sty $f8             
                 sty $fa     
 
 copy_loop:      lda ($f8),y 
@@ -75,6 +64,165 @@ copy_loop:      lda ($f8),y
                 lda #$37    
                 sta $01     
                 rts         
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_raster_irq:
+                sei
+                lda #$7f
+                sta $dc0d
+                sta $dd0d
+
+                lda #$01
+                sta $d01a
+
+                lda #$1b
+                sta $d011
+
+                lda #$a0
+                sta $d012
+
+                lda #<raster_irq
+                sta $0314
+                lda #>raster_irq
+                sta $0315
+
+                lda $dc0d
+                lda $dd0d
+                asl $d019
+                cli
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+raster_irq:
+                asl $d019
+
+                inc $d020
+                jsr manipulate_chars
+                dec $d020
+
+                jmp $ea31
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+manipulate_chars:
+                lda delay_ctr
+                beq mc1
+                dec delay_ctr
+                rts
+
+mc1:
+                lda curr_char
+                cmp max_char
+                bne mc3
+                rts
+mc3:
+                lda delay
+                sta delay_ctr
+                lda char_rows
+                bne mc2
+                lda #$04
+                sta char_rows
+                inc curr_char
+                rts
+
+mc2:
+                dec char_rows
+                ldx curr_char
+                lda char_lo, x
+                sta $f8
+                lda char_hi, x
+                sta $f9
+
+                ldy #$02
+                lda ($f8), y
+                iny
+                sta ($f8), y
+                dey
+                dey
+
+                lda ($f8), y
+                iny
+                sta ($f8), y
+                dey
+                dey
+
+                lda ($f8), y
+                iny
+                sta ($f8), y
+                lda #$00
+                dey
+                sta ($f8), y
+
+
+                ldy #$05
+                lda ($f8), y
+                dey
+                sta ($f8), y
+                iny
+                iny
+
+                lda ($f8), y
+                dey
+                sta ($f8), y
+                iny
+                iny
+
+                lda ($f8), y
+                dey
+                sta ($f8), y
+                iny
+                lda #$00
+                sta ($f8), y
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+delay:
+.byte $03
+
+delay_ctr:
+.byte $00
+
+char_rows:
+.byte $04
+
+max_char:
+.byte $20
+
+curr_char:
+.byte $00
+
+char_lo:
+.byte $00, $08, $10, $18, $20, $28, $30, $38, $40, $48, $50, $58, $60, $68, $70, $78
+.byte $80, $88, $90, $98, $a0, $a8, $b0, $b8, $c0, $c8, $d0, $d8, $e0, $e8, $f0, $f8
+
+.byte $00, $08, $10, $18, $20, $28, $30, $38, $40, $48, $50, $58, $60, $68, $70, $78
+.byte $80, $88, $90, $98, $a0, $a8, $b0, $b8, $c0, $c8, $d0, $d8, $e0, $e8, $f0, $f8
+
+.byte $00, $08, $10, $18, $20, $28, $30, $38, $40, $48, $50, $58, $60, $68, $70, $78
+.byte $80, $88, $90, $98, $a0, $a8, $b0, $b8, $c0, $c8, $d0, $d8, $e0, $e8, $f0, $f8
+
+.byte $00, $08, $10, $18, $20, $28, $30, $38, $40, $48, $50, $58, $60, $68, $70, $78
+.byte $80, $88, $90, $98, $a0, $a8, $b0, $b8, $c0, $c8, $d0, $d8, $e0, $e8, $f0, $f8
+
+
+char_hi:
+.byte $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38 
+.byte $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38, $38 
+
+.byte $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39
+.byte $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39, $39
+
+.byte $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a
+.byte $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a, $3a
+
+.byte $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b
+.byte $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b, $3b
+
 
 //======================================================================
 // prng.a65
