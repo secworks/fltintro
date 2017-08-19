@@ -7,6 +7,14 @@
 // (c) 2017 Joachim Strömbergson
 //======================================================================
 
+//------------------------------------------------------------------
+// Defines
+//------------------------------------------------------------------
+.var screen     = $0400
+.var screen_max = $08
+.var char_rom   = $d000
+.var char_copy  = $3800
+
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -21,6 +29,8 @@
 start:
                 sei
                 jsr copy_rom        
+                jsr find_screen_chars
+                jsr init_char_ptrs
 
                 // Switch char def bank.
                 lda $d018
@@ -30,6 +40,8 @@ start:
                 jsr init_raster_irq
                 cli
                 rts
+
+
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
@@ -112,47 +124,100 @@ mc1:
                 lda delay
                 sta delay_ctr
 
+                lda screen_char_ctr + 1
+                bne mc2
+                lda screen_char_ctr
+                bne mc2
+                inc fold_chars_done
+                rts
+
                 lda char_rows
                 beq mc2
-                jsr fold_16_chars
+                jsr fold_fe_rows
+                dec char_rows
                 rts
 mc2:
                 lda #$04
                 sta char_rows
-                dec char_index
-                bne mc3
-                inc fold_chars_done
-mc3:
+                jsr replace_char_20
+                jsr update_ptrs
+                jsr copy_char
+                jsr replace_char_fe
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+fold_fe_rows:
+                lda $3ff5
+                lda $3ff4
+                lda $3ff6
+                lda $3ff5
+                lda $3ff7
+                lda $3ff6
+
+                lda $3ff2
+                lda $3ff3
+                lda $3ff1
+                lda $3ff2
+                lda $3ff0
+                lda $3ff1
+
+                lda #$00
+                sta $3fff
+                sta $3ff0
                 rts
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-fold_16_chars:
-                lda char_index
-                sta curr_char
-                ldx #$08
-f16_loop:
-                jsr fold_curr_char
-                lda curr_char
-                clc
-                adc #$08
-                sta curr_char
-                dex
-                bne f16_loop
-                dec char_rows
+replace_char_20:
+                ldy #$00
+                lda #$20
+                sta ($f8), y
                 rts
 
 //------------------------------------------------------------------
-// fold_curr_char
-// Will fold one row of the char given by curr_char.
 //------------------------------------------------------------------
-fold_curr_char:
-                lda curr_char
-                asl
-                asl
-                asl
+replace_char_fe:
+                ldy #$00
+                lda #$fe
+                sta ($f8), y
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+update_ptrs:
+                ldy #$00
+                lda ($fa), y
                 sta $f8
-                lda curr_char
+                lda ($fc), y
+                sta $f9
+
+                inc $fa
+                bne up1
+                inc $fb
+up1:
+                inc $fc
+                bne up2
+                inc $fd
+up2:
+                dec screen_char_ctr
+                bne up3
+                dec screen_char_ctr + 1
+up3:
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+copy_char:
+                ldy #$00
+                lda ($f8), y
+                asl
+                asl
+                asl
+                sta $fe
+                lda ($f8), y
                 lsr
                 lsr
                 lsr
@@ -160,53 +225,127 @@ fold_curr_char:
                 lsr
                 clc
                 adc #$38
+                sta $ff
+cc1:
+                lda ($fe), y
+                sta $3ff0, y
+                iny
+                cpy #$08
+                bne cc1
+                rts
+
+//------------------------------------------------------------------
+// find_screen_chars
+//
+// Scans the screen for all chars not being space (0x20). The
+// 16-but address for each non space char is stored in two tables.
+// The number of non space characters are also counted.
+//
+// The code uses the following zero page addresses:
+// f8-f9 as pointer to the screen
+// fa-fb as pointer to the low byte table
+// fc-fd as pointer to the high byte table
+//------------------------------------------------------------------
+find_screen_chars:
+                sei
+                lda #$00
+                sta screen_char_ctr
+                sta screen_char_ctr + 1
+                jsr init_char_ptrs
+
+                ldy #$00
+find_loop:
+                lda ($f8), y
+                cmp #$20
+                beq next_char
+
+                lda $f8
+                sta ($fa), y
+                lda $f9
+                sta ($fc), y
+
+                inc $fa
+                bne fl1
+                inc $fb
+fl1:
+                inc $fc
+                bne fl2
+                inc $fd
+fl2:
+                inc screen_char_ctr
+                bne next_char
+                inc screen_char_ctr + 1
+next_char:
+                inc $f8
+                bne find_loop
+                inc $f9
+                cmp #>screen + 4
+                bne find_loop
+                cli
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_char_ptrs:
+                lda #<screen
+                sta $f8
+                lda #>screen
                 sta $f9
 
-                ldy #$02
-                lda ($f8), y
-                iny
-                sta ($f8), y
-                dey
-                dey
+                lda #<char_ptr_low
+                sta $fa
+                lda #>char_ptr_low
+                sta $fb
 
-                lda ($f8), y
-                iny
-                sta ($f8), y
-                dey
-                dey
+                lda #<char_ptr_high
+                sta $fc
+                lda #>char_ptr_high
+                sta $fd
+                rts
 
-                lda ($f8), y
-                iny
-                sta ($f8), y
-                lda #$00
-                dey
-                sta ($f8), y
 
-                ldy #$05
-                lda ($f8), y
-                dey
-                sta ($f8), y
-                iny
-                iny
+//------------------------------------------------------------------
+// Debug function. Prints the pointer info after finding chars.
+//------------------------------------------------------------------
+print_find_data:
+                sei
+                lda $fa
+                sta screen
+                lda $fb
+                sta screen + 1
 
-                lda ($f8), y
-                dey
-                sta ($f8), y
-                iny
-                iny
+                lda $fc
+                sta screen + 2
+                lda $fd
+                sta screen + 3
 
-                lda ($f8), y
+                lda screen_char_ctr
+                sta screen + 4
+                lda screen_char_ctr + 1
+                sta screen + 5
+                cli
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+clear_screen:
+                sei
+                lda #$20
+                ldy #$00
+bajs:
+                sta screen, y
+                sta screen + $100, y
+                sta screen + $200, y
+                sta screen + $300, y
                 dey
-                sta ($f8), y
-                iny
-                lda #$00
-                sta ($f8), y
+                bne bajs
+                cli
                 rts
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 delay:
-.byte $03
+.byte $08
 
 delay_ctr:
 .byte $00
@@ -222,6 +361,18 @@ curr_char:
 
 fold_chars_done:
 .byte $00
+
+screen_char_ctr:
+.byte $00, $00
+
+// Pointer tables.
+* = $2000 "Screen char address prointer low bytes"
+char_ptr_low:
+.fill 1024, 0
+
+* = $2400 "Screen char address prointer high bytes"
+char_ptr_high:
+.fill 1024, 0
 
 //======================================================================
 // prng.a65
