@@ -10,10 +10,10 @@
 //------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------
-.var screen     = $0400
-.var screen_max = $08
-.var char_rom   = $d000
-.var char_copy  = $3800
+.label screen_start = $0400
+.label screen_end   = $07e7
+.label char_rom     = $d000
+.label char_copy    = $3800
 
 
 //------------------------------------------------------------------
@@ -27,10 +27,53 @@
 //------------------------------------------------------------------
 * = $1000     "Folding char fade out"
 start:
+                jsr run_test_code
+//                jsr real_code
+forever:
+                inc $d020
+                jmp forever
+
+
+//------------------------------------------------------------------
+// run test code routines to debug the functions.
+//------------------------------------------------------------------
+run_test_code:
+                jsr test_char_ctr
+                rts
+
+
+//------------------------------------------------------------------
+// should get 8 chars counted.
+//------------------------------------------------------------------
+test_char_ctr:
+                jsr clear_screen
+
+                // Add some chars that we should find.
+                lda #01
+                sta $0400
+                sta $0410
+                sta $0500
+                sta $0510
+                sta $0600
+                sta $0610
+                sta $0700
+                sta $0710
+                sta $07e7
+
+                jsr init_char_ptrs
+                jsr init_char_ctr
+                jsr find_screen_chars
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+real_code:
                 sei
                 jsr copy_rom        
-                jsr find_screen_chars
                 jsr init_char_ptrs
+                jsr init_char_ctr
+                jsr find_screen_chars
 
                 // Switch char def bank.
                 lda $d018
@@ -247,18 +290,15 @@ cc1:
 // fc-fd as pointer to the high byte table
 //------------------------------------------------------------------
 find_screen_chars:
-                sei
-                lda #$00
-                sta screen_char_ctr
-                sta screen_char_ctr + 1
-                jsr init_char_ptrs
-
                 ldy #$00
 find_loop:
                 lda ($f8), y
                 cmp #$20
                 beq next_char
 
+                // Char is not space and we should store
+                // its address in the tables, update table
+                // pointers, and increase the char counter.
                 lda $f8
                 sta ($fa), y
                 lda $f9
@@ -275,21 +315,28 @@ fl2:
                 inc screen_char_ctr
                 bne next_char
                 inc screen_char_ctr + 1
+
+                // Move search pointer forward.
 next_char:
+                lda $f9
+                cmp #>screen_end
+                bne notdone
+                lda $f8
+                cmp #<screen_end
+                bne notdone
+                rts
+notdone:
                 inc $f8
                 bne find_loop
                 inc $f9
-                cmp #>screen + 4
-                bne find_loop
-                cli
-                rts
+                jmp find_loop
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 init_char_ptrs:
-                lda #<screen
+                lda #<screen_start
                 sta $f8
-                lda #>screen
+                lda #>screen_start
                 sta $f9
 
                 lda #<char_ptr_low
@@ -303,6 +350,13 @@ init_char_ptrs:
                 sta $fd
                 rts
 
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_char_ctr:
+                lda #$00
+                sta screen_char_ctr
+                sta screen_char_ctr + 1
+                rts
 
 //------------------------------------------------------------------
 // Debug function. Prints the pointer info after finding chars.
@@ -310,36 +364,34 @@ init_char_ptrs:
 print_find_data:
                 sei
                 lda $fa
-                sta screen
+                sta screen_start
                 lda $fb
-                sta screen + 1
+                sta screen_start + 1
 
                 lda $fc
-                sta screen + 2
+                sta screen_start + 2
                 lda $fd
-                sta screen + 3
+                sta screen_start + 3
 
                 lda screen_char_ctr
-                sta screen + 4
+                sta screen_start + 4
                 lda screen_char_ctr + 1
-                sta screen + 5
+                sta screen_start + 5
                 cli
                 rts
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 clear_screen:
-                sei
                 lda #$20
                 ldy #$00
-bajs:
-                sta screen, y
-                sta screen + $100, y
-                sta screen + $200, y
-                sta screen + $300, y
+clear_loop:
+                sta screen_start, y
+                sta screen_start + $100, y
+                sta screen_start + $200, y
+                sta screen_start + $300, y
                 dey
-                bne bajs
-                cli
+                bne clear_loop
                 rts
 
 //------------------------------------------------------------------
@@ -362,6 +414,8 @@ curr_char:
 fold_chars_done:
 .byte $00
 
+
+* = $1f00 "16 bit char counter"
 screen_char_ctr:
 .byte $00, $00
 
