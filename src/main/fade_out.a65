@@ -40,7 +40,8 @@ forever:
 //------------------------------------------------------------------
 run_test_code:
 //                jsr test_char_ctr
-                jsr test_char_replace
+//                jsr test_char_replace
+                jsr test_update_char_def
                 rts
 
 
@@ -69,10 +70,20 @@ test_replace_loop:
 
 test_replace_not_done:
                 jsr update_screen_ptr
-                jsr replace_char_fe
+                lda #$fe
+                sta rchar
+                jsr replace_char
                 jsr update_char_ptrs
                 jsr dec_char_ctr
                 jmp test_replace_loop
+
+
+//------------------------------------------------------------------
+// Test that we can update the char definition for a given
+// char on screen
+//------------------------------------------------------------------
+test_update_char_def:
+                rts
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
@@ -210,10 +221,13 @@ mc1:
 mc2:
                 lda #$04
                 sta char_rows
-                jsr replace_char_20
+                lda #$20
+                sta rchar
+                jsr replace_char
                 jsr update_ptrs
                 jsr copy_char
-                jsr replace_char_fe
+                lda #$fe
+                jsr replace_char
                 rts
 
 
@@ -241,17 +255,9 @@ fold_fe_rows:
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-replace_char_20:
+replace_char:
                 ldy #$00
-                lda #$20
-                sta ($f8), y
-                rts
-
-//------------------------------------------------------------------
-//------------------------------------------------------------------
-replace_char_fe:
-                ldy #$00
-                lda #$fe
+                lda rchar
                 sta ($f8), y
                 rts
 
@@ -485,6 +491,9 @@ char_index:
 .byte $20
 
 curr_char:
+.byte $00
+
+rchar:
 .byte $00
 
 fold_chars_done:
