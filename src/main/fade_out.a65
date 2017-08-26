@@ -170,6 +170,9 @@ copy_loop:      lda ($f8),y
 
 
 //------------------------------------------------------------------
+// init_raster_irq
+// Set up raster interrupt at the beginning of the screen since
+// we may update chars all over the screen.
 //------------------------------------------------------------------
 init_raster_irq:
                 sei
@@ -183,7 +186,7 @@ init_raster_irq:
                 lda #$1b
                 sta $d011
 
-                lda #$a0
+                lda #$20
                 sta $d012
 
                 lda #<raster_irq
@@ -198,6 +201,8 @@ init_raster_irq:
                 rts
 
 //------------------------------------------------------------------
+// raster_irg
+// Main raster interrupt handler.
 //------------------------------------------------------------------
 raster_irq:
                 asl $d019
@@ -212,8 +217,13 @@ fold_done:
 
 
 //------------------------------------------------------------------
+// manipulate_chars
+// Subroutine that performs the char manipulation operation
+// Note that the x register is used as index for the chars
+// we use for the manipulation.
 //------------------------------------------------------------------
 manipulate_chars:
+                ldx #$00
                 lda delay_ctr
                 beq mc1
                 dec delay_ctr
