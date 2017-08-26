@@ -48,12 +48,12 @@ run_test_code:
 //------------------------------------------------------------------
 // test_char_ctr
 // Test case that verfies that the code that scans the screen
-// and build pointer lists works as expected. Should get 
+// and build pointer lists works as expected. Should get
 // 9 chars counted.
 //------------------------------------------------------------------
 test_char_ctr:
                 jsr clear_screen
-                jsr write_test_chars                
+                jsr write_test_chars
                 jsr init_char_ptrs
                 jsr init_screen_ptr
                 jsr init_char_ctr
@@ -119,7 +119,7 @@ write_test_chars:
 //------------------------------------------------------------------
 real_code:
                 sei
-                jsr copy_and_swap       
+                jsr copy_and_swap
                 jsr init_char_ptrs
                 jsr init_char_ctr
                 jsr find_screen_chars
@@ -137,36 +137,36 @@ copy_and_swap:
                 lda $d018
                 ora #$0e
                 sta $d018
-                rts               
+                rts
 
 //------------------------------------------------------------------
 // copy_rom
 // copy char ROM to RAM.
 //------------------------------------------------------------------
  copy_rom:
-                ldx #$08    
-                lda #$33    
-                sta $01     
+                ldx #$08
+                lda #$33
+                sta $01
 
-                lda #$d0    
-                sta $f9     
-                lda #$38    
-                sta $fb     
-                ldy #$00    
-                sty $f8             
-                sty $fa     
+                lda #$d0
+                sta $f9
+                lda #$38
+                sta $fb
+                ldy #$00
+                sty $f8
+                sty $fa
 
-copy_loop:      lda ($f8),y 
-                sta ($fa),y 
-                iny         
-                bne copy_loop    
-                inc $f9     
-                inc $fb     
-                dex         
-                bne copy_loop    
-                lda #$37    
-                sta $01     
-                rts         
+copy_loop:      lda ($f8),y
+                sta ($fa),y
+                iny
+                bne copy_loop
+                inc $f9
+                inc $fb
+                dex
+                bne copy_loop
+                lda #$37
+                sta $01
+                rts
 
 
 //------------------------------------------------------------------
@@ -208,8 +208,6 @@ raster_irq:
                 asl $d019
 
                 dec $d020
-                lda fold_chars_done
-                bne fold_done
                 jsr manipulate_chars
 fold_done:
                 inc $d020
@@ -221,39 +219,42 @@ fold_done:
 // Subroutine that performs the char manipulation operation
 // Note that the x register is used as index for the chars
 // we use for the manipulation.
+//
+// PROBLEM: We need to look at fold done in each iteration
+// of the loop.
 //------------------------------------------------------------------
 manipulate_chars:
                 ldx #$00
-                lda delay_ctr
-                beq mc1
-                dec delay_ctr
+mc_loop:
+                lda fold_chars_done
+                bne mc_not_done
                 rts
-mc1:
+
+mc_not_done:
+                dec delay_ctrs, x
+                bne mc_next
                 lda delay
-                sta delay_ctr
+                sta delay_ctrs, x
 
-                lda screen_char_ctr + 1
-                bne mc2
-                lda screen_char_ctr
-                bne mc2
-                inc fold_chars_done
-                rts
+                lda fold_chars, x
+                pha
+                dec state_vars, x
+                bne mc_fold_char
 
-                lda char_rows
-                beq mc2
-                jsr fold_fe_rows
-                dec char_rows
-                rts
-mc2:
                 lda #$04
-                sta char_rows
-                lda #$20
-                sta rchar
-                jsr replace_char
-                jsr update_ptrs
-                jsr copy_char
-                lda #$fe
-                jsr replace_char
+                sta state_vars, x
+                // jsr to routine that replace char on screen with the
+                // the char from fold_chars.
+                jmp mc_next
+
+mc_fold_char:
+                // jsr to fold char def function
+
+mc_next:
+                inx
+                cpx #$03
+                bne mc_loop
+
                 rts
 
 
@@ -503,32 +504,23 @@ clear_loop:
                 rts
 
 //------------------------------------------------------------------
+// State variables
+// Storage for state driving the functionality
 //------------------------------------------------------------------
+* = $1f00 "State variables"
+screen_char_ctr:
+.byte $00, $00
+
+screen_chars_done:
+.byte $00
+
 delay:
-.byte $08
-
-delay_ctr:
-.byte $00
-
-char_rows:
 .byte $04
-
-char_index:
-.byte $20
-
-curr_char:
-.byte $00
 
 rchar:
 .byte $00
 
 fold_chars_done:
-.byte $00
-
-* = $1f00 "16 bit char counter"
-screen_char_ctr:
-.byte $00, $00
-screen_chars_done:
 .byte $00
 
 delay_ctrs:
@@ -537,7 +529,12 @@ delay_ctrs:
 state_vars:
 .byte $00, $00, $00
 
-// Pointer tables.
+fold_chars:
+.byte $ee, $ef, $f0
+
+//------------------------------------------------------------------
+// Pointer tables
+//------------------------------------------------------------------
 * = $2000 "Screen char address prointer low bytes"
 char_ptr_low:
 .fill 1024, 0
