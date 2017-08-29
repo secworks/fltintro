@@ -221,7 +221,8 @@ fold_done:
 // we use for the manipulation.
 //
 // PROBLEM: We need to look at fold done in each iteration
-// of the loop.
+// of the loop. Even harder, we need to do it multiple times
+// to allow all chars to complete.
 //------------------------------------------------------------------
 manipulate_chars:
                 ldx #$00
