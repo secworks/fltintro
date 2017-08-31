@@ -206,11 +206,15 @@ init_raster_irq:
 //------------------------------------------------------------------
 raster_irq:
                 asl $d019
-
+                lda folding_char_ctr
+                beq fold_done
                 dec $d020
                 jsr manipulate_chars
-fold_done:
                 inc $d020
+                jmp $ea31
+fold_done:
+                lda #$00
+                sta $d020
                 jmp $ea31
 
 
@@ -220,18 +224,14 @@ fold_done:
 // Note that the x register is used as index for the chars
 // we use for the manipulation.
 //
-// PROBLEM: We need to look at fold done in each iteration
-// of the loop. Even harder, we need to do it multiple times
-// to allow all chars to complete.
+// delay_ctrs is the delay for each of the folding chars.
+// fold_chars is the specific chars used to do the folding effect.
+// state_vars is the fold state for a giben folding char.
+// folding_char_ctr is the number of folding chars still active.
 //------------------------------------------------------------------
 manipulate_chars:
                 ldx #$00
 mc_loop:
-                lda fold_chars_done
-                bne mc_not_done
-                rts
-
-mc_not_done:
                 dec delay_ctrs, x
                 bne mc_next
                 lda delay
@@ -512,6 +512,9 @@ clear_loop:
 screen_char_ctr:
 .byte $00, $00
 
+folding_char_ctr:
+.byte $04
+
 screen_chars_done:
 .byte $00
 
@@ -536,11 +539,11 @@ fold_chars:
 //------------------------------------------------------------------
 // Pointer tables
 //------------------------------------------------------------------
-* = $2000 "Screen char address prointer low bytes"
+* = $2000 "Screen char address pointer low bytes"
 char_ptr_low:
 .fill 1024, 0
 
-* = $2400 "Screen char address prointer high bytes"
+* = $2400 "Screen char address pointer high bytes"
 char_ptr_high:
 .fill 1024, 0
 
