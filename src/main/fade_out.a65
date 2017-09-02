@@ -35,10 +35,9 @@
 * = $1000     "Folding char fade out"
 start:
                 sei
-//                jsr run_test_code
-                jsr real_code
+                jsr run_test_code
+//                jsr real_code
 forever:
-                inc $d020
                 jmp forever
 
 
@@ -47,8 +46,8 @@ forever:
 //------------------------------------------------------------------
 run_test_code:
 //                jsr test_char_ctr
-//                jsr test_char_replace
-                jsr test_update_char_def
+                jsr test_char_replace
+//                jsr test_update_char_def
                 rts
 
 
@@ -72,10 +71,10 @@ test_char_ctr:
 // Test case that verifies that we can traverse the pointer
 // list and access the identified chars on the screen.
 //------------------------------------------------------------------
-//test_char_replace:
-//                jsr test_char_ctr
-//                jsr init_char_ptrs
-//
+test_char_replace:
+                jsr test_char_ctr
+                jsr init_char_ptrs
+
 //test_replace_loop:
 //                lda screen_chars_done
 //                beq test_replace_not_done
@@ -126,12 +125,22 @@ write_test_chars:
 //------------------------------------------------------------------
 real_code:
                 sei
+                jsr init_code
                 jsr copy_and_swap
                 jsr init_char_ptrs
                 jsr init_char_ctr
                 jsr find_screen_chars
                 jsr init_raster_irq
                 cli
+                rts
+
+//------------------------------------------------------------------
+// init_code
+// Set all variables to correct values.
+//------------------------------------------------------------------
+init_code:
+                lda #$01
+                sta fold_chars_done
                 rts
 
 //------------------------------------------------------------------
@@ -150,7 +159,7 @@ copy_and_swap:
 // copy_rom
 // copy char ROM to RAM.
 //------------------------------------------------------------------
- copy_rom:
+copy_rom:
                 ldx #$08
                 lda #$33
                 sta $01
@@ -390,24 +399,9 @@ fc2:
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 update_ptrs:
-                ldy #$00
-                lda ($fa), y
-                sta $f8
-                lda ($fc), y
-                sta $f9
-
-                inc $fa
-                bne up1
-                inc $fb
-up1:
-                inc $fc
-                bne up2
-                inc $fd
-up2:
-                dec screen_char_ctr
-                bne up3
-                dec screen_char_ctr + 1
-up3:
+                jsr update_screen_ptr
+                jsr inc_char_ptrs
+                jsr dec_char_ctr
                 rts
 
 
@@ -528,7 +522,7 @@ init_char_ptrs:
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-update_char_ptrs:
+inc_char_ptrs:
                 inc $fa
                 bne inc_fc_fd
                 inc $fb
@@ -548,6 +542,9 @@ init_screen_ptr:
                 rts
 
 //------------------------------------------------------------------
+// update_screen_ptr
+// Update the screen pointer to the next char pointed to by
+// the zp pointers into the screen pointer tables
 //------------------------------------------------------------------
 update_screen_ptr:
                 ldy #$00
