@@ -16,12 +16,19 @@
 //------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------
-.label screen_start = $0400
-.label screen_end   = $07e7
-.label char_rom     = $d000
-.label char_copy    = $3800
-.const state_update = 0
-.const state_done   = 255
+.label screen_start   = $0400
+.label screen_end     = $07e7
+.label char_rom       = $d000
+.label char_copy      = $3800
+.const state_new      = 0
+.const state_fold3    = 1
+.const state_fold2    = 2
+.const state_fold1    = 3
+.const state_fold0    = 4
+.const state_first    = 254
+.const state_done     = 255
+.const num_fold_chars = 1
+
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -35,8 +42,8 @@
 * = $1000     "Folding char fade out"
 start:
                 sei
-                jsr run_test_code
-//                jsr real_code
+//                jsr run_test_code
+                jsr real_code
 forever:
                 jmp forever
 
@@ -46,8 +53,9 @@ forever:
 //------------------------------------------------------------------
 run_test_code:
 //                jsr test_char_ctr
-                jsr test_char_replace
+//                jsr test_char_replace
 //                jsr test_update_char_def
+                jsr test_swap_rom
                 rts
 
 
@@ -59,6 +67,8 @@ run_test_code:
 //------------------------------------------------------------------
 test_char_ctr:
                 jsr clear_screen
+                lda #$01
+                sta rchar
                 jsr write_test_chars
                 jsr init_char_ptrs
                 jsr init_screen_ptr
@@ -71,15 +81,15 @@ test_char_ctr:
 // Test case that verifies that we can traverse the pointer
 // list and access the identified chars on the screen.
 //------------------------------------------------------------------
-test_char_replace:
-                jsr test_char_ctr
-                jsr init_char_ptrs
-
+//test_char_replace:
+//                jsr test_char_ctr
+//                jsr init_char_ptrs
+//
 //test_replace_loop:
 //                lda screen_chars_done
 //                beq test_replace_not_done
 //                rts
-
+//
 //test_replace_not_done:
 //                jsr update_screen_ptr
 //                lda #$fe
@@ -89,6 +99,36 @@ test_char_replace:
 //                jsr dec_char_ctr
 //                jmp test_replace_loop
 
+
+//------------------------------------------------------------------
+// test_swap_rom
+// Test that we can copy the system char ROM and manipulate chars.
+//------------------------------------------------------------------
+test_swap_rom:
+                jsr clear_screen
+                lda #$fe
+                sta rchar
+                jsr write_test_chars
+                jsr copy_and_swap
+                lda #$aa
+                sta $3ff0
+                sta $3ff1
+                sta $3ff2
+                sta $3ff3
+                rts
+
+
+//------------------------------------------------------------------
+// test_copy_defs
+// Test that we can copy the system char ROM and manipulate chars.
+//------------------------------------------------------------------
+test_copy_defs:
+                jsr clear_screen
+                lda #$fe
+                jsr write_test_chars
+                jsr copy_and_swap
+                jsr copy_char_definition
+                rts
 
 //------------------------------------------------------------------
 // test_update_char_def
@@ -107,7 +147,7 @@ test_update_char_def:
 // Add some chars to the screen that we should find.
 //------------------------------------------------------------------
 write_test_chars:
-                lda #01
+                lda rchar
                 sta $0400
                 sta $0410
                 sta $0500
@@ -128,8 +168,11 @@ real_code:
                 jsr init_code
                 jsr copy_and_swap
                 jsr init_char_ptrs
+                jsr init_screen_ptr
                 jsr init_char_ctr
                 jsr find_screen_chars
+                jsr init_char_ptrs
+                jsr init_screen_ptr
                 jsr init_raster_irq
                 cli
                 rts
@@ -139,7 +182,7 @@ real_code:
 // Set all variables to correct values.
 //------------------------------------------------------------------
 init_code:
-                lda #$01
+                lda #$00
                 sta fold_chars_done
                 rts
 
@@ -191,7 +234,6 @@ copy_loop:      lda ($f8),y
 // we may update chars all over the screen.
 //------------------------------------------------------------------
 init_raster_irq:
-                sei
                 lda #$7f
                 sta $dc0d
                 sta $dd0d
@@ -202,7 +244,7 @@ init_raster_irq:
                 lda #$1b
                 sta $d011
 
-                lda #$20
+                lda #$00
                 sta $d012
 
                 lda #<raster_irq
@@ -213,7 +255,6 @@ init_raster_irq:
                 lda $dc0d
                 lda $dd0d
                 asl $d019
-                cli
                 rts
 
 //------------------------------------------------------------------
@@ -224,9 +265,7 @@ raster_irq:
                 asl $d019
                 lda fold_chars_done
                 bne fold_done
-                dec $d020
                 jsr manipulate_chars
-                inc $d020
                 jmp $ea31
 fold_done:
                 lda #$00
@@ -250,21 +289,28 @@ manipulate_chars:
 mc_loop:
                 // Check if we the given fold char is done or not.
                 lda state_vars, x
-                cpx state_done
+                cmp state_done
                 beq mc_next
 
                 // Update the delay counter for the given char
-                // and see if we should update the char.
+                // and see if we should do something with the char.
                 dec delay_ctrs, x
                 bne mc_next
+
                 lda delay
                 sta delay_ctrs, x
 
                 // Check if we should perform folding or
                 // load a new char definition
+                lda state_vars, x
+                cmp state_first
+                beq update_fold_char
+                cmp state_new
+                beq replace_fold_char
                 dec state_vars, x
-                bne mc_fold_char
+                jmp mc_fold_char
 
+replace_fold_char:
                 // The current char has been folded. We should
                 // Replace the fold char with space.
                 lda fold_chars_low_ptrs, x
@@ -277,7 +323,7 @@ mc_loop:
 
                 // Check if we have more screen chars to process.
                 lda screen_chars_done
-                bne fold_new_char
+                bne update_fold_char
 
                 // We have no more chars. Turn off the given
                 // fold char and decrease the counter of active
@@ -287,30 +333,48 @@ mc_loop:
                 jsr dec_fold_chars_ctr
                 jmp mc_next
 
-fold_new_char:
-                // Copy the char definition for the char pointe to by the
+update_fold_char:
+                // Get the next screen char and store in fold char ptr
+                // Then update pointer.
+                ldy #$00
+                lda ($fa), y
+                sta fold_chars_low_ptrs, x
+                lda ($fc), y
+                sta fold_chars_high_ptrs, x
+                jsr inc_char_ptrs
+                jsr dec_char_ctr
+
+                // Copy the char definition for the char pointed to by the
                 // temporary screen pointer to the definition for
-                // the given fold char. The replace char on screen with
+                // the given fold char. Then replace char on screen with
                 // the given fold char
                 jsr copy_char_definition
+
+                lda fold_chars_low_ptrs, x
+                sta $f8
+                lda fold_chars_high_ptrs, x
+                sta $f9
                 lda fold_chars, x
                 ldy #$00
-                sta ($fe), y
+                sta ($f8), y
                 lda delay
                 sta delay_ctrs, x
                 jmp mc_next
 
 mc_fold_char:
                 // Perform folding on the given folding char.
-                jsr fold_char
+//                jsr fold_char
                 lda delay
                 sta delay_ctrs, x
+                dec state_vars, x
                 jmp mc_next
 
 mc_next:
                 inx
-                cpx #$03
-                bne mc_loop
+                cpx num_fold_chars
+                beq mc_done
+                jmp mc_loop
+mc_done:
                 rts
 
 //------------------------------------------------------------------
@@ -331,69 +395,60 @@ fcc:
 // Here we need to reuse zp-pointers fa-fb and fc-fd
 //------------------------------------------------------------------
 copy_char_definition:
-                jsr s_zp_ptrs_y
-
-                // Make the f8-f9 zp point to the definition
-                // of the char on the screen
-                ldy #$00
-                lda ($fe), y
-                asl
-                asl
-                asl
+                lda fold_chars_low_ptrs, x
+                jsr fix_low_ptr
                 sta $f8
-                lda ($fe), y
-                lsr
-                lsr
-                lsr
-                lsr
-                lsr
-                clc
-                adc #$38
+                lda fold_chars_high_ptrs, x
+                jsr fix_high_ptr
                 sta $f9
 
-                jsr s_zp_def_ptr
+                lda fold_chars, x
+                jsr fix_low_ptr
+                sta $fe
+                lda fold_chars, x
+                jsr fix_high_ptr
+                sta $ff
+
+                ldy #$07
 cp_loop:
                 lda ($f8), y
-                sta ($fa), y
-                iny
-                cpy #08
+                sta ($fe), y
+                dey
                 bne cp_loop
-
-                jsr r_zp_prts_y
                 rts
 
 //------------------------------------------------------------------
 // Here we perform the actual folding operation.
 //------------------------------------------------------------------
 fold_char:
-                jsr s_zp_ptrs_y
-                jsr s_zp_def_ptr
-
+                lda fold_chars_low_ptrs, x
+                sta $fe
+                lda fold_chars_high_ptrs, x
+                sta $ff
                 ldy #$03
 fc1:
-                lda ($fa), y
+                lda ($fe), y
                 iny
-                sta ($fa), y
+                sta ($fe), y
                 dey
                 dey
                 bne fc1
                 lda #$00
-                sta ($fa), y
+                sta ($fe), y
 
 
                 ldy #$05
 fc2:
-                lda ($fa), y
+                lda ($fe), y
                 dey
-                sta ($fa), y
+                sta ($fe), y
                 iny
                 iny
                 cpy #$08
                 bne fc2
                 lda #00
                 ldy #$07
-                sta ($fa), y
-                jsr r_zp_prts_y
+                sta ($fe), y
                 rts
 
 //------------------------------------------------------------------
@@ -411,15 +466,14 @@ update_ptrs:
 //------------------------------------------------------------------
 s_zp_ptrs_y:
                 lda $f8
-                pha
+                sta tmp_storage + 0
                 lda $f9
-                pha
+                sta tmp_storage + 1
                 lda $fa
-                pha
+                sta tmp_storage + 2
                 lda $fb
-                pha
-                tya
-                pha
+                sta tmp_storage + 3
+                sty tmp_storage + 4
                 rts
 
 //------------------------------------------------------------------
@@ -427,17 +481,17 @@ s_zp_ptrs_y:
 // Restore the zp addresses we need to reuse. And the y reg.
 //------------------------------------------------------------------
 r_zp_prts_y:
-                pla
-                tay
-                pla
-                sta $fb
-                pla
-                sta $fa
-                pla
-                sta $f9
-                pla
+                lda tmp_storage + 0
                 sta $f8
+                lda tmp_storage + 1
+                sta $f9
+                lda tmp_storage + 2
+                sta $fa
+                lda tmp_storage + 3
+                sta $fb
+                ldy tmp_storage + 4
                 rts
+
 
 //------------------------------------------------------------------
 // Set fa-fb zo point to char def for the given fold char.
@@ -457,6 +511,26 @@ s_zp_def_ptr:
                 clc
                 adc #$38
                 sta $fb
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+fix_low_ptr:
+                asl
+                asl
+                asl
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+fix_high_ptr:
+                lsr
+                lsr
+                lsr
+                lsr
+                lsr
+                clc
+                adc #$38
                 rts
 
 //------------------------------------------------------------------
@@ -649,7 +723,7 @@ delay_ctrs:
 .byte $01, $02, $03
 
 state_vars:
-.byte $00, $00, $00
+.byte state_new, state_new, state_new
 
 fold_chars:
 .byte $ee, $ef, $f0
@@ -660,6 +734,8 @@ fold_chars_low_ptrs:
 fold_chars_high_ptrs:
 .byte $00, $00, $00
 
+tmp_storage:
+.byte $00, $00, $00, $00, $00
 
 //------------------------------------------------------------------
 // Pointer tables
