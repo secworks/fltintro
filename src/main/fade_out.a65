@@ -5,7 +5,7 @@
 // The code operates on three characters simultaneously.
 //
 // The code uses the following zero page addresses:
-// f8-f9 as pointer to the screen
+// f8-f9 as pointer to the screen. Also used for folding, copy.
 // fa-fb as pointer to the low byte table
 // fc-fd as pointer to the high byte table
 // fe-ff as temporary screen pointer during fold char replacement.
@@ -127,7 +127,8 @@ test_copy_defs:
                 lda #$fe
                 jsr write_test_chars
                 jsr copy_and_swap
-                jsr copy_char_definition
+                lda #$07
+                jsr memcpy
                 rts
 
 //------------------------------------------------------------------
@@ -348,7 +349,9 @@ update_fold_char:
                 // temporary screen pointer to the definition for
                 // the given fold char. Then replace char on screen with
                 // the given fold char
-                jsr copy_char_definition
+                // TODO: Change to set pointers correctly
+                ldy #$00
+                jsr memcpy
 
                 lda fold_chars_low_ptrs, x
                 sta $f8
@@ -392,29 +395,17 @@ fcc:
                 rts
 
 //------------------------------------------------------------------
-// Here we need to reuse zp-pointers fa-fb and fc-fd
+// copy_char_definition
+// Copy a sequence of bytes in memory. Does not check overlap.
+// src: zp f8-f9
+// dst: zp fe-ff
+// len: y-reg
 //------------------------------------------------------------------
-copy_char_definition:
-                lda fold_chars_low_ptrs, x
-                jsr fix_low_ptr
-                sta $f8
-                lda fold_chars_high_ptrs, x
-                jsr fix_high_ptr
-                sta $f9
-
-                lda fold_chars, x
-                jsr fix_low_ptr
-                sta $fe
-                lda fold_chars, x
-                jsr fix_high_ptr
-                sta $ff
-
-                ldy #$07
-cp_loop:
+memcpy:
                 lda ($f8), y
                 sta ($fe), y
                 dey
-                bne cp_loop
+                bne memcpy
                 rts
 
 //------------------------------------------------------------------
@@ -737,6 +728,7 @@ fold_chars_high_ptrs:
 tmp_storage:
 .byte $00, $00, $00, $00, $00
 
+
 //------------------------------------------------------------------
 // Pointer tables
 //------------------------------------------------------------------
@@ -747,6 +739,7 @@ char_ptr_low:
 * = $2400 "Screen char address pointer high bytes"
 char_ptr_high:
 .fill 1024, 0
+
 
 //======================================================================
 // prng.a65
