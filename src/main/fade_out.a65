@@ -5,10 +5,10 @@
 // The code operates on three characters simultaneously.
 //
 // The code uses the following zero page addresses:
-// f8-f9 as pointer to the screen. Also used for folding, copy.
-// fa-fb as pointer to the low byte table
-// fc-fd as pointer to the high byte table
-// fe-ff as temporary screen pointer during fold char replacement.
+// f8-f9 as ptr to the screen. Source for copy, folding.
+// fa-fb as ptr to the low byte table
+// fc-fd as ptr to the high byte table
+// fe-ff as ptr the screen. Destination for copy, folding.
 //
 // (c) 2017 Joachim Strömbergson
 //======================================================================
