@@ -5,6 +5,7 @@
 // The code operates on three characters simultaneously.
 //
 // The code uses the following zero page addresses:
+// 02 as counter for memcpy routine.
 // f8-f9 as ptr to the screen. Source for copy, folding.
 // fa-fb as ptr to the low byte table
 // fc-fd as ptr to the high byte table
@@ -399,13 +400,15 @@ fcc:
 // Copy a sequence of bytes in memory. Does not check overlap.
 // src: zp f8-f9
 // dst: zp fe-ff
-// len: y-reg
+// len: zp 02
 //------------------------------------------------------------------
 memcpy:
-                lda ($f8), y
+                ldy #$00
+memcpy_l1:      lda ($f8), y
                 sta ($fe), y
-                dey
-                bne memcpy
+                iny
+                cpy $02
+                bne memcpy_l1
                 rts
 
 //------------------------------------------------------------------
