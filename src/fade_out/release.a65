@@ -1,0 +1,83 @@
+//======================================================================
+// release.a65
+// ------------
+// Main driver for the fade_out effect.
+//
+// (c) 2017 Joachim Strömbergson
+//======================================================================
+
+#import "fade_out.a65"
+
+//------------------------------------------------------------------
+// Basic start code.
+//------------------------------------------------------------------
+.pc = $0801     "Basic uppstart"
+	        :BasicUpstart(start)
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+* = $1000     "Folding char fade out"
+start:
+                sei
+                jsr init_code
+                jsr copy_and_swap
+                jsr init_char_ptrs
+                jsr init_screen_ptr
+                jsr init_char_ctr
+                jsr find_screen_chars
+                jsr init_char_ptrs
+                jsr init_screen_ptr
+                jsr init_raster_irq
+                cli
+forever:
+                jmp forever
+
+
+//------------------------------------------------------------------
+// init_raster_irq
+// Set up raster interrupt at the beginning of the screen since
+// we may update chars all over the screen.
+//------------------------------------------------------------------
+init_raster_irq:
+                lda #$7f
+                sta $dc0d
+                sta $dd0d
+
+                lda #$01
+                sta $d01a
+
+                lda #$1b
+                sta $d011
+
+                lda #$00
+                sta $d012
+
+                lda #<raster_irq
+                sta $0314
+                lda #>raster_irq
+                sta $0315
+
+                lda $dc0d
+                lda $dd0d
+                asl $d019
+                rts
+
+//------------------------------------------------------------------
+// raster_irg
+// Main raster interrupt handler.
+//------------------------------------------------------------------
+raster_irq:
+                asl $d019
+                lda fold_chars_done
+                bne fold_done
+                jsr manipulate_chars
+                jmp $ea31
+fold_done:
+                lda #$00
+                sta $d020
+                jmp $ea31
+
+//======================================================================
+// prng.a65
+//======================================================================
