@@ -1,0 +1,48 @@
+
+.const state_fold2    = 2
+.const state_fold1    = 3
+.const state_fold0    = 4
+.const state_first    = 254
+
++.label screen_start = $0400
++.label screen_end   = $07e7
++.label char_rom     = $d000
++.label char_copy    = $3800
+
++.const state_done   = 1
++.const state_fold   = 2
++.const state_update = 3
+
+ * = $1000 "Main fade-out code."
+
+char_fold_ctr:
+.byte $00, $00, $00
+
+char_delay_ctr:
+.byte $00, $00, $00
+
+
+//------------------------------------------------------------------
+// char_fsm
+// Handle states for a char with a given x index.
+// each char have two state bytes. One to track speed and
+// one for update status. Note that each char also has a fold
+// counter and a delay counter
+//------------------------------------------------------------------
+char_fsm:
+                lda char_state, x
+                cmp state_done
+                bne not_done
+                rts
+not_done:
+                cmp state_fold
+                bne not_folding
+                jmp fold_char
+not_folding:
+                cmp state_update
+                bne not_update
+                jmp update_char
+not_update:
+                lda #$01
+                sta error_state
+                rts
