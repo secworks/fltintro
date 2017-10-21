@@ -17,7 +17,7 @@
 
 .const init_delay = 10
 .const fold_steps = 4
-.const fold_delay = 4
+.const fold_delay = 10
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -32,9 +32,59 @@
 start:
                 jsr fsm_init
 forever:
+                jsr wait_time
                 jsr fsm_update
+                jsr print_state
                 jmp forever
 
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+print_state:
+                lda fsm_state
+                clc
+                adc #$30
+                sta $0400
+
+                lda fsm_fold_ctr
+                clc
+                adc #$30
+                sta $0402
+
+                lda fsm_delay_ctr
+                clc
+                adc #$30
+                sta $0404
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+wait_time:
+                lda wait
+                beq wait1
+                dec wait
+                jmp wait_time
+wait1:
+                lda wait + 1
+                beq wait2
+                dec wait + 1
+                jmp wait_time
+wait2:
+                lda #$ff
+                sta wait + 1
+                rts
+
+wait:
+.byte $00, $00
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+waitspace:
+                lda #$7f
+                sta $dc00
+                lda $dc01
+                and #$10
+                bne waitspace
+                rts
 
 //------------------------------------------------------------------
 // State and counters for the FSM.
