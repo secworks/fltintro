@@ -1,48 +1,187 @@
+//======================================================================
+// fsm.a65
+// -------
+// FSM implementation.
+//
+// (c) 2017 Joachim Strömbergson
+//======================================================================
 
-.const state_fold2    = 2
-.const state_fold1    = 3
-.const state_fold0    = 4
-.const state_first    = 254
+//------------------------------------------------------------------
+// Defines
+//------------------------------------------------------------------
+.const state_init   = 1
+.const state_next   = 2
+.const state_update = 3
+.const state_modify = 4
+.const state_done   = 5
 
-+.label screen_start = $0400
-+.label screen_end   = $07e7
-+.label char_rom     = $d000
-+.label char_copy    = $3800
+.const init_delay = 10
+.const fold_steps = 4
+.const fold_delay = 4
 
-+.const state_done   = 1
-+.const state_fold   = 2
-+.const state_update = 3
-
- * = $1000 "Main fade-out code."
-
-char_fold_ctr:
-.byte $00, $00, $00
-
-char_delay_ctr:
-.byte $00, $00, $00
+//------------------------------------------------------------------
+// Basic start code.
+//------------------------------------------------------------------
+.pc = $0801     "Basic uppstart"
+	        :BasicUpstart(start)
 
 
 //------------------------------------------------------------------
-// char_fsm
-// Handle states for a char with a given x index.
-// each char have two state bytes. One to track speed and
-// one for update status. Note that each char also has a fold
-// counter and a delay counter
 //------------------------------------------------------------------
-char_fsm:
-                lda char_state, x
-                cmp state_done
-                bne not_done
+* = $0900     "FSM test code"
+start:
+                jsr fsm_init
+forever:
+                jsr fsm_update
+                jmp forever
+
+
+//------------------------------------------------------------------
+// State and counters for the FSM.
+//------------------------------------------------------------------
+* = $0f00 "FSM state."
+
+fsm_state:
+.byte $00
+
+fsm_fold_ctr:
+.byte $00
+
+fsm_delay_ctr:
+.byte $00
+
+char_ctr:
+.byte $10
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+* = $1000 "FSM code."
+
+
+//------------------------------------------------------------------
+// fsm_init
+// Initialize the fsm state.
+//------------------------------------------------------------------
+fsm_init:
+                lda state_init
+                sta fsm_state
+                lda int_delay
+                sta fsm_delay_ctr
                 rts
-not_done:
-                cmp state_fold
-                bne not_folding
-                jmp fold_char
-not_folding:
+
+//------------------------------------------------------------------
+// fsm_update
+// Perform the fsm update logic. Basically check state and
+// jump to corresponding state handler.
+//------------------------------------------------------------------
+fsm_update:
+                lda fsm_state
+                cmp state_init
+                bne not_init
+                jmp fsm_state_init
+not_init:
+                cmp state_next
+                bne not_next
+                jmp fsm_state_next
+not_next:
                 cmp state_update
                 bne not_update
-                jmp update_char
+                jmp fsm_state_update
 not_update:
-                lda #$01
-                sta error_state
+                cmp state modify
+                bne not_modify
+                jmp fsm_state_modify
+not_modify:
+                jmp fsm_state_done
+
+
+//------------------------------------------------------------------
+// fsm_state_init
+// Initial state of fsm. Wait a delay number of iterations.
+//------------------------------------------------------------------
+fsm_state_init:
+                dec fsm_delay_ctr
+                bne fsi1
+                lda state_next
+                sta fsm_state
+fsi1:
+                rts
+
+//------------------------------------------------------------------
+// fsm_state_next
+// We should try to grab the next char to modify unless done.
+// TODO: Add decrease of active chars here.
+//------------------------------------------------------------------
+fsm_state_next:
+                lda char_ctr
+                bne fsn1
+                lda state_done
+                sta fsm_state
+                rts
+fsn1:
+                lda state_update
+                sta state fsm_state
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_update
+// There is at least one more char. Update the char pointers etc.
+//------------------------------------------------------------------
+fsm_state_update:
+                jsr get_next_char
+                lda fold_steps
+                sta fsm_fold_ctr
+                lda state_modify
+                sta fsm_state
+                rts
+
+//------------------------------------------------------------------
+// fsm_state_modify
+// Perform the actual char modification operation
+//------------------------------------------------------------------
+fsm_state_modify:
+                lda fsm_delay_ctr
+                beq fsm1
+                dec fsm_delay_ctr
+                rts
+fsm1:
+                lda fsm_fold_ctr
+                beq fsm2
+                dec fsm_fold_ctr
+                jsr fold_char
+                lda fold_delay
+                sta fsm_delay_ctr
+                rts
+fsm2:
+                lda state_next
+                sta fsm_state
+                rts
+
+//------------------------------------------------------------------
+// fsm_state_done
+// All chars has been processed. We are done.
+//------------------------------------------------------------------
+fsm_state_done:
+                dec $d020
+                rts
+
+//------------------------------------------------------------------
+// get_next_char
+// Dummy code for getting the char pointed to by the char_ptr,
+// checking which char it is, copy its definition to the fold
+// char definition and replacing it with the fold char.
+// This will also cause the char counter to decreas and
+// Moving the next char pointer.
+//------------------------------------------------------------------
+get_next_char:
+                dec char_ctr
+                rts
+
+//------------------------------------------------------------------
+// fold_char
+// Dummu code that simulates the actual char manipulation.
+//------------------------------------------------------------------
+fold_char:
                 rts
