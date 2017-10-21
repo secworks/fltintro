@@ -1,15 +1,7 @@
 //======================================================================
-// fade_out.a65
-// ------------
-// Code for doing fade out effect.
-// The code operates on three characters simultaneously.
-//
-// The code uses the following zero page addresses:
-// 02 as counter for memcpy routine.
-// f8-f9 as ptr to the screen. Source for copy, folding.
-// fa-fb as ptr to the low byte table
-// fc-fd as ptr to the high byte table
-// fe-ff as ptr the screen. Destination for copy, folding.
+// test.a65
+// --------
+// Test code for the fade out.
 //
 // (c) 2017 Joachim Strömbergson
 //======================================================================
