@@ -66,7 +66,7 @@ char_ctr:
 fsm_init:
                 lda state_init
                 sta fsm_state
-                lda int_delay
+                lda init_delay
                 sta fsm_delay_ctr
                 rts
 
@@ -89,7 +89,7 @@ not_next:
                 bne not_update
                 jmp fsm_state_update
 not_update:
-                cmp state modify
+                cmp state_modify
                 bne not_modify
                 jmp fsm_state_modify
 not_modify:
@@ -121,7 +121,7 @@ fsm_state_next:
                 rts
 fsn1:
                 lda state_update
-                sta state fsm_state
+                sta fsm_state
                 rts
 
 
