@@ -1,7 +1,15 @@
 //======================================================================
 // fsm.a65
 // -------
-// FSM implementation.
+// FSM implementation for the fade-out function.
+//
+// The code uses the following zero page addresses:
+// 02 as counter for memcpy routine.
+// f8-f9 as ptr to the screen. Source for search, copy, folding.
+// fa-fb as ptr to the low byte table
+// fc-fd as ptr to the high byte table
+// fe-ff as ptr to the screen. Destination for copy, folding.
+//
 //
 // (c) 2017 Joachim Strömbergson
 //======================================================================
@@ -9,17 +17,23 @@
 //------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------
-.label state_init   = 1
+.label screen_start = $0400
+.label screen_end   = $07e7
+.label char_rom     = $d000
+.label char_copy    = $3800
+
+.const state_init   = 1
 .const state_next   = 2
 .const state_update = 3
 .const state_modify = 4
 .const state_done   = 5
 
-.const init_delay = 10
-.const fold_steps = 4
-.const fold_delay = 10
-.const fold_chars = 4
-.const test_chars = 20
+.const init_delay   = 10
+.const fold_steps   = 4
+.const fold_delay   = 10
+.const fold_chars   = 4
+.const test_chars   = 20
+
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -32,6 +46,12 @@
 //------------------------------------------------------------------
 * = $0900     "FSM test code"
 start:
+                // Scan to get track of all chars on the screen.
+                jsr init_char_ptrs
+                jsr init_screen_ptr
+                jsr init_char_ctr
+                jsr find_screen_chars
+
                 // Change to lower case letters.
                 lda $d018
                 ora #$02
@@ -134,12 +154,20 @@ fsm_state:
 .byte state_init, state_init
 
 fsm_delay_ctr:
-.byte init_delay + 0, init_delay + 1
-.byte init_delay + 2, init_delay + 3
+.byte init_delay + 0, init_delay + 3
+.byte init_delay + 6, init_delay + 9
 
 fsm_fold_ctr:
 .byte $00, $00, $00, $00
 
+screen_char_ctr:
+.byte $00, $00
+
+fold_chars_ctr:
+.byte $04
+
+screen_chars_done:
+.byte $00
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
@@ -191,11 +219,10 @@ fsi1:
 //------------------------------------------------------------------
 // fsm_state_next
 // We should try to grab the next char to modify unless done.
-// TODO: Add decrease of active chars here.
 //------------------------------------------------------------------
 fsm_state_next:
-                lda char_ctr
-                bne fsn1
+                lda screen_chars_done
+                beq fsn1
                 dec active_chars
                 lda #state_done
                 sta fsm_state, x
@@ -266,3 +293,139 @@ get_next_char:
 //------------------------------------------------------------------
 fold_char:
                 rts
+
+
+//------------------------------------------------------------------
+// find_screen_chars
+//
+// Scans the screen for all chars not being space (0x20). The
+// 16-but address for each non space char is stored in two tables.
+// The number of non space characters are also counted.
+//------------------------------------------------------------------
+find_screen_chars:
+                ldy #$00
+find_loop:
+                lda ($f8), y
+                cmp #$20
+                beq next_char
+
+                // Char is not space and we should store
+                // its address in the tables, update table
+                // pointers, and increase the char counter.
+                lda $f8
+                sta ($fa), y
+                lda $f9
+                sta ($fc), y
+
+                jsr inc_char_ptrs
+                jsr inc_char_ctr
+next_char:
+                lda $f9
+                cmp #>screen_end
+                bne notdone
+                lda $f8
+                cmp #<screen_end
+                bne notdone
+                rts
+notdone:
+                inc $f8
+                bne find_loop
+                inc $f9
+                jmp find_loop
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_char_ptrs:
+                lda #<char_ptr_low
+                sta $fa
+                lda #>char_ptr_low
+                sta $fb
+
+                lda #<char_ptr_high
+                sta $fc
+                lda #>char_ptr_high
+                sta $fd
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+inc_char_ptrs:
+                inc $fa
+                bne inc_fc_fd
+                inc $fb
+inc_fc_fd:
+                inc $fc
+                bne no_inc_fd
+                inc $fd
+no_inc_fd:      rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_screen_ptr:
+                lda #<screen_start
+                sta $f8
+                lda #>screen_start
+                sta $f9
+                rts
+
+//------------------------------------------------------------------
+// update_screen_ptr
+// Update the screen pointer to the next char pointed to by
+// the zp pointers into the screen pointer tables
+//------------------------------------------------------------------
+update_screen_ptr:
+                ldy #$00
+                lda ($fa), y
+                sta $f8
+                lda ($fc), y
+                sta $f9
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+init_char_ctr:
+                lda #$00
+                sta screen_char_ctr
+                sta screen_char_ctr + 1
+                sta screen_chars_done
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+inc_char_ctr:
+                inc screen_char_ctr
+                bne icc1
+                inc screen_char_ctr + 1
+icc1:
+                rts
+
+
+//------------------------------------------------------------------
+// dec_char_ctr:
+//------------------------------------------------------------------
+                dec screen_char_ctr
+                bne dcc1
+                rts
+dcc1:
+                dec screen_char_ctr + 1
+                beq dcc2
+                rts
+dcc2:
+                lda #$01
+                sta screen_chars_done
+                rts
+
+//------------------------------------------------------------------
+// Pointer tables
+// Screen char address pointer low bytes
+// Screen char address pointer high bytes
+//------------------------------------------------------------------
+char_ptr_low:
+.fill 1024, 0
+
+char_ptr_high:
+.fill 1024, 0
+
+//======================================================================
+// EOF fsm.a65
+//======================================================================
