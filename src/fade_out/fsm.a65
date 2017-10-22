@@ -18,7 +18,8 @@
 .const init_delay = 10
 .const fold_steps = 4
 .const fold_delay = 10
-.const test_chars = 2
+.const fold_chars = 4
+.const test_chars = 20
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -31,46 +32,59 @@
 //------------------------------------------------------------------
 * = $0900     "FSM test code"
 start:
-                jsr fsm_init
                 // Change to lower case letters.
                 lda $d018
                 ora #$02
                 sta $d018
                 jsr print_state
 
-forever:
+more_chars:
                 jsr wait_space
                 jsr wait_time
+                ldx #$00
+mc1:
                 jsr fsm_update
+                inx
+                cpx #fold_chars
+                bne mc1
+
                 jsr print_state
-                jmp forever
+                lda active_chars
+                bne more_chars
+                rts
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 print_state:
-                lda fsm_state
+                ldx #$00
+print_more:
+                lda fsm_state, x
                 clc
                 adc #$30
-                sta $0400
+                sta $0400, x
 
-                lda fsm_delay_ctr
+                lda fsm_delay_ctr, x
                 clc
                 adc #$30
-                sta $0402
+                sta $0428, x
 
-                lda fsm_fold_ctr
+                lda fsm_fold_ctr, x
                 clc
                 adc #$30
-                sta $0404
+                sta $0450, x
+
+                inx
+                cpx #$04
+                bne print_more
 
                 lda char_ctr
                 clc
                 adc #$30
-                sta $0406
-
-                lda wait
                 sta $0410
-                lda wait + 1
+
+                lda active_chars
+                clc
+                adc #$30
                 sta $0411
                 rts
 
@@ -109,17 +123,22 @@ wait:
 //------------------------------------------------------------------
 * = $0f00 "FSM state."
 
-fsm_state:
-.byte $00
-
-fsm_delay_ctr:
-.byte $00
-
-fsm_fold_ctr:
-.byte $00
+active_chars:
+.byte fold_chars
 
 char_ctr:
-.byte $10
+.byte test_chars
+
+fsm_state:
+.byte state_init, state_init
+.byte state_init, state_init
+
+fsm_delay_ctr:
+.byte init_delay + 0, init_delay + 1
+.byte init_delay + 2, init_delay + 3
+
+fsm_fold_ctr:
+.byte $00, $00, $00, $00
 
 
 //------------------------------------------------------------------
@@ -128,30 +147,12 @@ char_ctr:
 
 
 //------------------------------------------------------------------
-// fsm_init
-// Initialize the fsm state.
-//------------------------------------------------------------------
-fsm_init:
-                lda #state_init
-                sta fsm_state
-
-                lda #init_delay
-                sta fsm_delay_ctr
-
-                lda #$00
-                sta fsm_fold_ctr
-
-                lda #test_chars
-                sta char_ctr
-                rts
-
-//------------------------------------------------------------------
 // fsm_update
 // Perform the fsm update logic. Basically check state and
 // jump to corresponding state handler.
 //------------------------------------------------------------------
 fsm_update:
-                lda fsm_state
+                lda fsm_state, x
                 cmp #state_init
                 bne not_init
                 jmp fsm_state_init
@@ -180,10 +181,10 @@ not_done:
 // Initial state of fsm. Wait a delay number of iterations.
 //------------------------------------------------------------------
 fsm_state_init:
-                dec fsm_delay_ctr
+                dec fsm_delay_ctr, x
                 bne fsi1
                 lda #state_next
-                sta fsm_state
+                sta fsm_state, x
 fsi1:
                 rts
 
@@ -195,12 +196,13 @@ fsi1:
 fsm_state_next:
                 lda char_ctr
                 bne fsn1
+                dec active_chars
                 lda #state_done
-                sta fsm_state
+                sta fsm_state, x
                 rts
 fsn1:
                 lda #state_update
-                sta fsm_state
+                sta fsm_state, x
                 rts
 
 
@@ -211,11 +213,11 @@ fsn1:
 fsm_state_update:
                 jsr get_next_char
                 lda #fold_delay
-                sta fsm_delay_ctr
+                sta fsm_delay_ctr, x
                 lda #fold_steps
-                sta fsm_fold_ctr
+                sta fsm_fold_ctr, x
                 lda #state_modify
-                sta fsm_state
+                sta fsm_state, x
                 rts
 
 //------------------------------------------------------------------
@@ -223,19 +225,19 @@ fsm_state_update:
 // Perform the actual char modification operation
 //------------------------------------------------------------------
 fsm_state_modify:
-                dec fsm_delay_ctr
+                dec fsm_delay_ctr, x
                 beq fsm1
                 rts
 fsm1:
-                dec fsm_fold_ctr
+                dec fsm_fold_ctr, x
                 beq fsm2
                 jsr fold_char
                 lda #fold_delay
-                sta fsm_delay_ctr
+                sta fsm_delay_ctr, x
                 rts
 fsm2:
                 lda #state_next
-                sta fsm_state
+                sta fsm_state, x
                 rts
 
 //------------------------------------------------------------------
