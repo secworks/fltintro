@@ -92,7 +92,7 @@ wait2:
                 rts
 
 wait:
-.byte $00, $00, $00
+.byte $00, $00
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
@@ -149,23 +149,27 @@ fsm_init:
 //------------------------------------------------------------------
 fsm_update:
                 lda fsm_state
-                cmp state_init
+                cmp #state_init
                 bne not_init
                 jmp fsm_state_init
 not_init:
-                cmp state_next
+                cmp #state_next
                 bne not_next
                 jmp fsm_state_next
 not_next:
-                cmp state_update
+                cmp #state_update
                 bne not_update
                 jmp fsm_state_update
 not_update:
-                cmp state_modify
+                cmp #state_modify
                 bne not_modify
                 jmp fsm_state_modify
 not_modify:
+                cmp #state_done
+                bne not_done
                 jmp fsm_state_done
+not_done:
+                rts
 
 
 //------------------------------------------------------------------
@@ -175,7 +179,7 @@ not_modify:
 fsm_state_init:
                 dec fsm_delay_ctr
                 bne fsi1
-                lda state_next
+                lda #state_next
                 sta fsm_state
 fsi1:
                 rts
@@ -188,11 +192,11 @@ fsi1:
 fsm_state_next:
                 lda char_ctr
                 bne fsn1
-                lda state_done
+                lda #state_done
                 sta fsm_state
                 rts
 fsn1:
-                lda state_update
+                lda #state_update
                 sta fsm_state
                 rts
 
@@ -203,9 +207,9 @@ fsn1:
 //------------------------------------------------------------------
 fsm_state_update:
                 jsr get_next_char
-                lda fold_steps
+                lda #fold_steps
                 sta fsm_fold_ctr
-                lda state_modify
+                lda #state_modify
                 sta fsm_state
                 rts
 
@@ -214,20 +218,18 @@ fsm_state_update:
 // Perform the actual char modification operation
 //------------------------------------------------------------------
 fsm_state_modify:
-                lda fsm_delay_ctr
-                beq fsm1
                 dec fsm_delay_ctr
+                beq fsm1
                 rts
 fsm1:
-                lda fsm_fold_ctr
-                beq fsm2
                 dec fsm_fold_ctr
+                beq fsm2
                 jsr fold_char
-                lda fold_delay
+                lda #fold_delay
                 sta fsm_delay_ctr
                 rts
 fsm2:
-                lda state_next
+                lda #state_next
                 sta fsm_state
                 rts
 
