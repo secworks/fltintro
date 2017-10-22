@@ -39,7 +39,7 @@ start:
                 jsr print_state
 
 forever:
-                jsr waitspace
+                jsr wait_space
                 jsr wait_time
                 jsr fsm_update
                 jsr print_state
@@ -53,12 +53,12 @@ print_state:
                 adc #$30
                 sta $0400
 
-                lda fsm_fold_ctr
+                lda fsm_delay_ctr
                 clc
                 adc #$30
                 sta $0402
 
-                lda fsm_delay_ctr
+                lda fsm_fold_ctr
                 clc
                 adc #$30
                 sta $0404
@@ -72,6 +72,16 @@ print_state:
                 sta $0410
                 lda wait + 1
                 sta $0411
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+wait_space:
+                lda #$7f
+                sta $dc00
+                lda $dc01
+                and #$10
+                bne wait_space
                 rts
 
 //------------------------------------------------------------------
@@ -95,16 +105,6 @@ wait:
 .byte $00, $00
 
 //------------------------------------------------------------------
-//------------------------------------------------------------------
-waitspace:
-                lda #$7f
-                sta $dc00
-                lda $dc01
-                and #$10
-                bne waitspace
-                rts
-
-//------------------------------------------------------------------
 // State and counters for the FSM.
 //------------------------------------------------------------------
 * = $0f00 "FSM state."
@@ -112,10 +112,10 @@ waitspace:
 fsm_state:
 .byte $00
 
-fsm_fold_ctr:
+fsm_delay_ctr:
 .byte $00
 
-fsm_delay_ctr:
+fsm_fold_ctr:
 .byte $00
 
 char_ctr:
@@ -134,10 +134,13 @@ char_ctr:
 fsm_init:
                 lda #state_init
                 sta fsm_state
+
                 lda #init_delay
                 sta fsm_delay_ctr
-                lda #fold_delay
+
+                lda #$00
                 sta fsm_fold_ctr
+
                 lda #test_chars
                 sta char_ctr
                 rts
@@ -207,6 +210,8 @@ fsn1:
 //------------------------------------------------------------------
 fsm_state_update:
                 jsr get_next_char
+                lda #fold_delay
+                sta fsm_delay_ctr
                 lda #fold_steps
                 sta fsm_fold_ctr
                 lda #state_modify
