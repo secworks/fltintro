@@ -44,7 +44,7 @@
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-* = $0900     "FSM test code"
+* = $0900     "Fsm test code"
 start:
                 // Scan to get track of all chars on the screen.
                 jsr init_char_ptrs
@@ -101,6 +101,16 @@ print_more:
                 sta $0410
                 lda screen_char_ctr + 1
                 sta $0411
+
+                lda $fa
+                sta $0414
+                lda $fb
+                sta $0415
+
+                lda $fc
+                sta $0418
+                lda $fd
+                sta $0419
 
                 lda active_chars
                 clc
@@ -159,9 +169,6 @@ fsm_delay_ctr:
 
 fsm_fold_ctr:
 .byte $00, $00, $00, $00
-
-screen_char_ctr:
-.byte $00, $00
 
 fold_chars_ctr:
 .byte $04
@@ -421,6 +428,12 @@ dcc2:
 // Screen char address pointer low bytes
 // Screen char address pointer high bytes
 //------------------------------------------------------------------
+* = $2f00     "Char counter."
+screen_char_ctr:
+.byte $00, $00
+
+
+* = $3000     "Pointer Tables."
 char_ptr_low:
 .fill 1024, 0
 
