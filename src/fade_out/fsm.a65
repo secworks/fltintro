@@ -97,15 +97,15 @@ print_more:
                 cpx #$04
                 bne print_more
 
-                lda char_ctr
-                clc
-                adc #$30
+                lda screen_char_ctr
                 sta $0410
+                lda screen_char_ctr + 1
+                sta $0411
 
                 lda active_chars
                 clc
                 adc #$30
-                sta $0411
+                sta $0420
                 rts
 
 //------------------------------------------------------------------
@@ -131,7 +131,7 @@ wait1:
                 beq wait2
                 jmp wait_time
 wait2:
-                lda #$20
+                lda #$01
                 sta wait + 1
                 rts
 
@@ -284,7 +284,8 @@ fsm_state_done:
 // Moving the next char pointer.
 //------------------------------------------------------------------
 get_next_char:
-                dec char_ctr
+                jsr inc_char_ptrs
+                jsr dec_char_ctr
                 rts
 
 //------------------------------------------------------------------
@@ -403,7 +404,7 @@ icc1:
 //------------------------------------------------------------------
 // dec_char_ctr:
 //------------------------------------------------------------------
-                dec screen_char_ctr
+dec_char_ctr:   dec screen_char_ctr
                 bne dcc1
                 rts
 dcc1:
