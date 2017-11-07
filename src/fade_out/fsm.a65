@@ -19,6 +19,7 @@
 //------------------------------------------------------------------
 .label screen_start = $0400
 .label screen_end   = $07e7
+.label screen_base  = $0772
 .label char_rom     = $d000
 .label char_copy    = $3800
 
@@ -81,41 +82,41 @@ print_more:
                 lda fsm_state, x
                 clc
                 adc #$30
-                sta $0400, x
+                sta screen_base, x
 
                 lda fsm_delay_ctr, x
                 clc
                 adc #$30
-                sta $0428, x
+                sta screen_base + $28, x
 
                 lda fsm_fold_ctr, x
                 clc
                 adc #$30
-                sta $0450, x
+                sta screen_base + $50, x
 
                 inx
                 cpx #$04
                 bne print_more
 
                 lda screen_char_ctr
-                sta $0410
+                sta screen_base + $10
                 lda screen_char_ctr + 1
-                sta $0411
+                sta screen_base + $11
 
                 lda $fa
-                sta $0414
+                sta screen_base + $14
                 lda $fb
-                sta $0415
+                sta screen_base + $15
 
                 lda $fc
-                sta $0418
+                sta screen_base + $18
                 lda $fd
-                sta $0419
+                sta screen_base + $19
 
                 lda active_chars
                 clc
                 adc #$30
-                sta $0420
+                sta screen_base + $20
                 rts
 
 //------------------------------------------------------------------
@@ -166,6 +167,9 @@ fsm_state:
 fsm_delay_ctr:
 .byte init_delay + 0, init_delay + 3
 .byte init_delay + 6, init_delay + 9
+
+fsm_mod_chars:
+.byte $fb, $fc, $fd, $fe
 
 fsm_fold_ctr:
 .byte $00, $00, $00, $00
@@ -257,6 +261,8 @@ fsm_state_update:
 //------------------------------------------------------------------
 // fsm_state_modify
 // Perform the actual char modification operation
+// When all steps has been performed we replace the mod char
+// with a space.
 //------------------------------------------------------------------
 fsm_state_modify:
                 dec fsm_delay_ctr, x
@@ -270,6 +276,7 @@ fsm1:
                 sta fsm_delay_ctr, x
                 rts
 fsm2:
+                jsr remove_char
                 lda #state_next
                 sta fsm_state, x
                 rts
@@ -297,11 +304,17 @@ get_next_char:
 
 //------------------------------------------------------------------
 // fold_char
-// Dummu code that simulates the actual char manipulation.
+// Dummy code that simulates the actual char manipulation.
 //------------------------------------------------------------------
 fold_char:
                 rts
 
+//------------------------------------------------------------------
+// fold_char
+// Dummy code that should remove the mod char on the screen.
+//------------------------------------------------------------------
+remove_char:
+                rts
 
 //------------------------------------------------------------------
 // find_screen_chars
