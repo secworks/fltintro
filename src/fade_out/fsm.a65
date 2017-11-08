@@ -3,12 +3,13 @@
 // -------
 // FSM implementation for the fade-out function.
 //
-// The code uses the following zero page addresses:
+// The code uses the following zero page addresses and regs:
 // 02 as counter for memcpy routine.
 // f8-f9 as ptr to the screen. Source for search, copy, folding.
 // fa-fb as ptr to the low byte table
 // fc-fd as ptr to the high byte table
 // fe-ff as ptr to the screen. Destination for copy, folding.
+// x register for fold char index.
 //
 //
 // (c) 2017 Joachim Strömbergson
@@ -22,6 +23,7 @@
 .label screen_base  = $0772
 .label char_rom     = $d000
 .label char_copy    = $3800
+.label space_char   = $20
 
 .const state_init   = 1
 .const state_next   = 2
@@ -304,6 +306,7 @@ fsm_state_done:
 // Moving the next char pointer.
 //------------------------------------------------------------------
 get_next_char:
+                jsr copy_char_ptr
                 jsr inc_char_ptrs
                 jsr dec_char_ctr
                 rts
@@ -316,10 +319,17 @@ fold_char:
                 rts
 
 //------------------------------------------------------------------
-// fold_char
+// remove_char
 // Dummy code that should remove the mod char on the screen.
 //------------------------------------------------------------------
 remove_char:
+                lda fsm_char_ptr_low, x
+                sta $fe
+                lda fsm_char_ptr_high, x
+                sta $ff
+                ldy #$00
+                lda #space_char
+                sta ($fe), y
                 rts
 
 //------------------------------------------------------------------
@@ -440,6 +450,18 @@ dcc1:
 dcc2:
                 lda #$01
                 sta screen_chars_done
+                rts
+
+//------------------------------------------------------------------
+// copy_char_ptr
+// Copy the current char ptr to the local ptrs for each mod char.
+//------------------------------------------------------------------
+copy_char_ptr:
+                ldy #$00
+                lda ($fa), y
+                sta fsm_char_ptr_low, x
+                lda ($fc), y
+                sta fsm_char_ptr_high, x
                 rts
 
 //------------------------------------------------------------------
