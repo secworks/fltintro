@@ -168,7 +168,13 @@ fsm_delay_ctr:
 .byte init_delay + 0, init_delay + 3
 .byte init_delay + 6, init_delay + 9
 
-fsm_mod_chars:
+fsm_char_ptr_low:
+.byte $00, $00, $00, $00
+
+fsm_char_ptr_high:
+.byte $00, $00, $00, $00
+
+fsm_mod_char:
 .byte $fb, $fc, $fd, $fe
 
 fsm_fold_ctr:
