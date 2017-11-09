@@ -166,7 +166,7 @@ active_chars:
 .byte fold_chars
 
 char_ctr:
-.byte test_chars
+.byte $00, $000
 
 fsm_state:
 .byte state_init, state_init
