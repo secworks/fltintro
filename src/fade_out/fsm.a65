@@ -54,6 +54,7 @@ start:
                 jsr init_screen_ptr
                 jsr init_char_ctr
                 jsr find_screen_chars
+                jsr init_char_ptrs
 
                 // Change to lower case letters.
                 lda $d018
