@@ -94,6 +94,11 @@ print_more:
                 adc #$30
                 sta screen_base + $50, x
 
+                lda fsm_char_ptr_low, x
+                sta screen_base + $06, x
+                lda fsm_char_ptr_high, x
+                sta screen_base + $2e, x
+
                 inx
                 cpx #$04
                 bne print_more
