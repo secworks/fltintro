@@ -49,6 +49,9 @@
 //------------------------------------------------------------------
 * = $0900     "Fsm test code"
 start:
+                jsr clear_screen
+                jsr pattern1
+
                 // Scan to get track of all chars on the screen.
                 jsr init_char_ptrs
                 jsr init_screen_ptr
@@ -57,9 +60,9 @@ start:
                 jsr init_char_ptrs
 
                 // Change to lower case letters.
-                lda $d018
-                ora #$02
-                sta $d018
+//                lda $d018
+//                ora #$02
+//                sta $d018
                 jsr print_state
 
 more_chars:
@@ -75,6 +78,33 @@ mc1:
                 jsr print_state
                 lda active_chars
                 bne more_chars
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+clear_screen:
+                ldy #$00
+                lda #space_char
+clear1:
+                sta $0400, y
+                sta $0500, y
+                sta $0600, y
+                sta $0700, y
+                iny
+                bne clear1
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+pattern1:
+                ldy #$00
+                lda #01
+p1:
+                sta $0400, y
+                sta $0500, y
+                iny
+                iny
+                bne p1
                 rts
 
 //------------------------------------------------------------------
@@ -162,11 +192,14 @@ wait:
 //------------------------------------------------------------------
 * = $0f00 "FSM state."
 
+fsm_char_ptr_low:
+.byte $00, $00, $00, $00
+
+fsm_char_ptr_high:
+.byte $00, $00, $00, $00
+
 active_chars:
 .byte fold_chars
-
-char_ctr:
-.byte $00, $000
 
 fsm_state:
 .byte state_init, state_init
@@ -175,12 +208,6 @@ fsm_state:
 fsm_delay_ctr:
 .byte init_delay + 0, init_delay + 3
 .byte init_delay + 6, init_delay + 9
-
-fsm_char_ptr_low:
-.byte $00, $00, $00, $00
-
-fsm_char_ptr_high:
-.byte $00, $00, $00, $00
 
 fsm_mod_char:
 .byte $fb, $fc, $fd, $fe
@@ -479,11 +506,11 @@ copy_char_ptr:
 screen_char_ctr:
 .byte $00, $00
 
-
-* = $3000     "Pointer Tables."
+* = $3000     "Char Pointers Low Byte."
 char_ptr_low:
 .fill 1024, 0
 
+* = $3400     "Char pointers High Byte."
 char_ptr_high:
 .fill 1024, 0
 
