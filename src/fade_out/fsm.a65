@@ -180,7 +180,7 @@ wait1:
                 beq wait2
                 jmp wait_time
 wait2:
-                lda #$01
+                lda #$04
                 sta wait + 1
                 rts
 
@@ -340,6 +340,7 @@ fsm_state_done:
 //------------------------------------------------------------------
 get_next_char:
                 jsr copy_char_ptr
+                jsr replace_char
                 jsr inc_char_ptrs
                 jsr dec_char_ctr
                 rts
@@ -352,8 +353,20 @@ fold_char:
                 rts
 
 //------------------------------------------------------------------
+// replace_char
+//------------------------------------------------------------------
+replace_char:
+                lda fsm_char_ptr_low, x
+                sta $fe
+                lda fsm_char_ptr_high, x
+                sta $ff
+                ldy #$00
+                lda fsm_mod_char, x
+                sta ($fe), y
+                rts
+
+//------------------------------------------------------------------
 // remove_char
-// Dummy code that should remove the mod char on the screen.
 //------------------------------------------------------------------
 remove_char:
                 lda fsm_char_ptr_low, x
