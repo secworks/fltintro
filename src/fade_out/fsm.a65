@@ -474,7 +474,7 @@ icc1:
 // dec_char_ctr:
 //------------------------------------------------------------------
 dec_char_ctr:   dec screen_char_ctr
-                bne dcc1
+                beq dcc1
                 rts
 dcc1:
                 dec screen_char_ctr + 1
