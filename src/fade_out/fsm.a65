@@ -221,10 +221,13 @@ fold_chars_ctr:
 screen_chars_done:
 .byte $00
 
+screen_char_ctr:
+.byte $00, $00
+
+
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 * = $1000 "FSM code."
-
 
 //------------------------------------------------------------------
 // fsm_update
@@ -515,10 +518,6 @@ copy_char_ptr:
 // Screen char address pointer low bytes
 // Screen char address pointer high bytes
 //------------------------------------------------------------------
-* = $2f00     "Char counter."
-screen_char_ctr:
-.byte $00, $00
-
 * = $3000     "Char Pointers Low Byte."
 char_ptr_low:
 .fill 1024, 0
