@@ -41,13 +41,13 @@
 //------------------------------------------------------------------
 // Basic start code.
 //------------------------------------------------------------------
-.pc = $0801     "Basic uppstart"
+.pc = $0801     "Basic uppstart."
 	        :BasicUpstart(start)
 
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-* = $0900     "Fsm test code"
+* = $0900     "Fsm test code."
 start:
                 jsr clear_screen
                 jsr pattern1
@@ -187,47 +187,10 @@ wait2:
 wait:
 .byte $00, $00
 
-//------------------------------------------------------------------
-// State and counters for the FSM.
-//------------------------------------------------------------------
-* = $0f00 "FSM state."
-
-fsm_char_ptr_low:
-.byte $00, $00, $00, $00
-
-fsm_char_ptr_high:
-.byte $00, $00, $00, $00
-
-active_chars:
-.byte fold_chars
-
-fsm_state:
-.byte state_init, state_init
-.byte state_init, state_init
-
-fsm_delay_ctr:
-.byte init_delay + 0, init_delay + 3
-.byte init_delay + 6, init_delay + 9
-
-fsm_mod_char:
-.byte $fb, $fc, $fd, $fe
-
-fsm_fold_ctr:
-.byte $00, $00, $00, $00
-
-fold_chars_ctr:
-.byte $04
-
-screen_chars_done:
-.byte $00
-
-screen_char_ctr:
-.byte $00, $00
-
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-* = $1000 "FSM code."
+* = $1000 "FSM code and state."
 
 //------------------------------------------------------------------
 // fsm_update
@@ -530,17 +493,55 @@ memcpy_l1:      lda ($f8), y
                 rts
 
 //------------------------------------------------------------------
-// Pointer tables
-// Screen char address pointer low bytes
-// Screen char address pointer high bytes
+// State and counters for the FSM.
 //------------------------------------------------------------------
-* = $3000     "Char Pointers Low Byte."
+fsm_char_ptr_low:
+.byte $00, $00, $00, $00
+
+fsm_char_ptr_high:
+.byte $00, $00, $00, $00
+
+active_chars:
+.byte fold_chars
+
+fsm_state:
+.byte state_init, state_init
+.byte state_init, state_init
+
+fsm_delay_ctr:
+.byte init_delay + 0, init_delay + 3
+.byte init_delay + 6, init_delay + 9
+
+fsm_mod_char:
+.byte $fb, $fc, $fd, $fe
+
+fsm_fold_ctr:
+.byte $00, $00, $00, $00
+
+fold_chars_ctr:
+.byte $04
+
+screen_chars_done:
+.byte $00
+
+screen_char_ctr:
+.byte $00, $00
+
+
+//------------------------------------------------------------------
+// Pointer tables and char defintion area
+//------------------------------------------------------------------
+* = $3000     "Char Pointers low bytes."
 char_ptr_low:
 .fill 1024, 0
 
-* = $3400     "Char pointers High Byte."
+* = $3400     "Char pointers high bytes."
 char_ptr_high:
 .fill 1024, 0
+
+* = $3800     "Char definition area."
+char_defs:
+.fill 2048, 0
 
 //======================================================================
 // EOF fsm.a65
