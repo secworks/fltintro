@@ -221,6 +221,10 @@ fold_chars_ctr:
 screen_chars_done:
 .byte $00
 
+screen_char_ctr:
+.byte $00, $00
+
+
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 * = $1000 "FSM code."
@@ -498,14 +502,26 @@ copy_char_ptr:
                 rts
 
 //------------------------------------------------------------------
+// memcpy
+// Copy a sequence of bytes in memory. Does not check for overlap.
+// src: zp f8-f9
+// dst: zp fe-ff
+// len: zp 02
+//------------------------------------------------------------------
+memcpy:
+                ldy #$00
+memcpy_l1:      lda ($f8), y
+                sta ($fe), y
+                iny
+                cpy $02
+                bne memcpy_l1
+                rts
+
+//------------------------------------------------------------------
 // Pointer tables
 // Screen char address pointer low bytes
 // Screen char address pointer high bytes
 //------------------------------------------------------------------
-* = $2f00     "Char counter."
-screen_char_ctr:
-.byte $00, $00
-
 * = $3000     "Char Pointers Low Byte."
 char_ptr_low:
 .fill 1024, 0
