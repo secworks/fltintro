@@ -324,6 +324,7 @@ fsm_state_done:
 get_next_char:
                 jsr copy_char_ptr
                 jsr replace_char
+                jsr copy_char_def
                 jsr inc_char_ptrs
                 jsr dec_char_ctr
                 rts
@@ -362,6 +363,58 @@ remove_char:
                 lda #space_char
                 sta ($fe), y
                 rts
+
+
+//------------------------------------------------------------------
+// copy_char_def
+// Copy the char definition for the char to be replaced
+// as given by fsm_replace_char to the corresponding
+// folding dsm_mod_char.
+//------------------------------------------------------------------
+copy_char_def:
+                jsr set_char_def_ptrs
+                lda #$08
+                sta $02
+                jsr memcpy
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+set_char_def_ptrs:
+                // Set up f8-f9 as source pointer for the char def.
+                lda fsm_replace_char, x
+                asl
+                asl
+                asl
+                sta $f8
+                lda fsm_replace_char, x
+                lsr
+                lsr
+                lsr
+                lsr
+                lsr
+                clc
+                adc #<char_copy
+                sta $f9
+
+                // Set up fe-ff as dest pointer for the char def.
+                lda fsm_mod_char, x
+                asl
+                asl
+                asl
+                sta $fe
+                lda fsm_mod_char, x
+                lsr
+                lsr
+                lsr
+                lsr
+                lsr
+                clc
+                adc #<char_copy
+                sta $ff
+                rts
+
 
 //------------------------------------------------------------------
 // find_screen_chars
@@ -427,7 +480,9 @@ inc_fc_fd:
                 inc $fd
 no_inc_fd:      rts
 
+
 //------------------------------------------------------------------
+// init_screen_ptr:
 //------------------------------------------------------------------
 init_screen_ptr:
                 lda #<screen_start
@@ -435,6 +490,7 @@ init_screen_ptr:
                 lda #>screen_start
                 sta $f9
                 rts
+
 
 //------------------------------------------------------------------
 // update_screen_ptr
@@ -448,6 +504,7 @@ update_screen_ptr:
                 lda ($fc), y
                 sta $f9
                 rts
+
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
