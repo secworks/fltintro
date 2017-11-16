@@ -60,9 +60,10 @@ start:
                 jsr init_char_ptrs
 
                 // Change to lower case letters.
-//                lda $d018
-//                ora #$02
-//                sta $d018
+                //                lda $d018
+                //                ora #$02
+                //                sta $d018
+
                 jsr print_state
 
 more_chars:
@@ -121,6 +122,7 @@ p2:
                 iny
                 bne p2
                 rts
+
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
@@ -329,12 +331,38 @@ get_next_char:
                 jsr dec_char_ctr
                 rts
 
+
 //------------------------------------------------------------------
 // fold_char
 // Dummy code that simulates the actual char manipulation.
 //------------------------------------------------------------------
 fold_char:
+                jsr set_def_dest_ptr
+                ldy #$03
+fc1:
+                lda ($fe), y
+                iny
+                sta ($fe), y
+                dey
+                dey
+                bne fc1
+                lda #$00
+                sta ($fe), y
+
+                ldy #$05
+fc2:
+                lda ($fe), y
+                dey
+                sta ($fe), y
+                iny
+                iny
+                cpy #$08
+                bne fc2
+                lda #00
+                ldy #$07
+                sta ($fe), y
                 rts
+
 
 //------------------------------------------------------------------
 // replace_char
@@ -372,16 +400,16 @@ remove_char:
 // folding dsm_mod_char.
 //------------------------------------------------------------------
 copy_char_def:
-                jsr set_char_def_ptrs
+                jsr set_def_src_ptr
+                jsr set_def_dest_ptr
                 lda #$08
                 sta $02
                 jsr memcpy
                 rts
 
-
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-set_char_def_ptrs:
+set_def_src_ptr:
                 // Set up f8-f9 as source pointer for the char def.
                 lda fsm_replace_char, x
                 asl
@@ -395,9 +423,13 @@ set_char_def_ptrs:
                 lsr
                 lsr
                 clc
-                adc #<char_copy
+                adc #>char_copy
                 sta $f9
+                rts
 
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+set_def_dest_ptr:
                 // Set up fe-ff as dest pointer for the char def.
                 lda fsm_mod_char, x
                 asl
@@ -411,7 +443,7 @@ set_char_def_ptrs:
                 lsr
                 lsr
                 clc
-                adc #<char_copy
+                adc #>char_copy
                 sta $ff
                 rts
 
