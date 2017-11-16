@@ -31,9 +31,9 @@
 .const state_modify = 4
 .const state_done   = 5
 
-.const init_delay   = 10
+.const init_delay   = 2
 .const fold_steps   = 4
-.const fold_delay   = 10
+.const fold_delay   = 5
 .const fold_chars   = 4
 .const test_chars   = 20
 
@@ -62,6 +62,9 @@ start:
                 jsr init_char_ptrs
 
                 jsr print_state
+
+//                jsr init_raster_irq
+//                rts
 
 more_chars:
                 jsr wait_space
@@ -113,10 +116,9 @@ pattern2:
 p2:
                 txa
                 sta $0400, y
-                sta $0500, y
                 inx
                 iny
-                iny
+                cpy #$34
                 bne p2
                 rts
 
@@ -126,51 +128,51 @@ p2:
 print_state:
                 ldx #$00
 print_more:
-                lda fsm_state, x
-                clc
-                adc #$30
-                sta screen_base, x
-
-                lda fsm_delay_ctr, x
-                clc
-                adc #$30
-                sta screen_base + $28, x
-
-                lda fsm_fold_ctr, x
-                clc
-                adc #$30
-                sta screen_base + $50, x
-
-                lda fsm_char_ptr_low, x
-                sta screen_base + $06, x
-                lda fsm_char_ptr_high, x
-                sta screen_base + $2e, x
-
-                lda fsm_replace_char, x
-                sta screen_base + $0b, x
-                inx
-                cpx #$04
-                bne print_more
+//                lda fsm_state, x
+//                clc
+//                adc #$30
+//                sta screen_base, x
+//
+//                lda fsm_delay_ctr, x
+//                clc
+//                adc #$30
+//                sta screen_base + $28, x
+//
+//                lda fsm_fold_ctr, x
+//                clc
+//                adc #$30
+//                sta screen_base + $50, x
+//
+//                lda fsm_char_ptr_low, x
+//                sta screen_base + $06, x
+//                lda fsm_char_ptr_high, x
+//                sta screen_base + $2e, x
+//
+//                lda fsm_replace_char, x
+//                sta screen_base + $0b, x
+//                inx
+//                cpx #$04
+//                bne print_more
 
                 lda screen_char_ctr
                 sta screen_base + $10
                 lda screen_char_ctr + 1
                 sta screen_base + $11
 
-                lda $fa
-                sta screen_base + $14
-                lda $fb
-                sta screen_base + $15
-
-                lda $fc
-                sta screen_base + $18
-                lda $fd
-                sta screen_base + $19
-
-                lda active_chars
-                clc
-                adc #$30
-                sta screen_base + $20
+//                lda $fa
+//                sta screen_base + $14
+//                lda $fb
+//                sta screen_base + $15
+//
+//                lda $fc
+//                sta screen_base + $18
+//                lda $fd
+//                sta screen_base + $19
+//
+//                lda active_chars
+//                clc
+//                adc #$30
+//                sta screen_base + $20
                 rts
 
 //------------------------------------------------------------------
@@ -203,6 +205,61 @@ wait2:
 wait:
 .byte $00, $00
 
+
+
+//------------------------------------------------------------------
+// init_raster_irq
+// Set up raster interrupt at the beginning of the screen since
+// we may update chars all over the screen.
+//------------------------------------------------------------------
+init_raster_irq:
+                sei
+                lda #$7f
+                sta $dc0d
+                sta $dd0d
+
+                lda #$01
+                sta $d01a
+
+                lda #$1b
+                sta $d011
+
+                lda #$00
+                sta $d012
+
+                lda #<raster_irq
+                sta $0314
+                lda #>raster_irq
+                sta $0315
+
+                lda $dc0d
+                lda $dd0d
+                asl $d019
+                cli
+                rts
+
+//------------------------------------------------------------------
+// raster_irg
+// Main raster interrupt handler.
+//------------------------------------------------------------------
+raster_irq:
+                asl $d019
+
+                lda active_chars
+                bne do_more
+                lda #$00
+                sta $d020
+                jmp $ea31
+do_more:
+                ldx #$00
+rirq1:
+                jsr fsm_update
+                inx
+                cpx #fold_chars
+                bne rirq1
+
+                jsr print_state
+                jmp $ea31
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
