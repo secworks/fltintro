@@ -50,7 +50,7 @@
 * = $0900     "Fsm test code."
 start:
                 jsr clear_screen
-                jsr pattern1
+                jsr pattern2
 
                 // Scan to get track of all chars on the screen.
                 jsr init_char_ptrs
@@ -109,6 +109,21 @@ p1:
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
+pattern2:
+                ldy #$00
+                ldx #01
+p2:
+                txa
+                sta $0400, y
+                sta $0500, y
+                inx
+                iny
+                iny
+                bne p2
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
 print_state:
                 ldx #$00
 print_more:
@@ -132,6 +147,8 @@ print_more:
                 lda fsm_char_ptr_high, x
                 sta screen_base + $2e, x
 
+                lda fsm_replace_char, x
+                sta screen_base + $0b, x
                 inx
                 cpx #$04
                 bne print_more
@@ -322,11 +339,13 @@ fold_char:
 // replace_char
 //------------------------------------------------------------------
 replace_char:
+                ldy #$00
                 lda fsm_char_ptr_low, x
                 sta $fe
                 lda fsm_char_ptr_high, x
                 sta $ff
-                ldy #$00
+                lda ($fe), y
+                sta fsm_replace_char, x
                 lda fsm_mod_char, x
                 sta ($fe), y
                 rts
@@ -514,6 +533,9 @@ fsm_delay_ctr:
 
 fsm_mod_char:
 .byte $fb, $fc, $fd, $fe
+
+fsm_replace_char:
+.byte $00, $00, $00, $00
 
 fsm_fold_ctr:
 .byte $00, $00, $00, $00
