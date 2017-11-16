@@ -51,6 +51,8 @@
 start:
                 jsr clear_screen
                 jsr pattern2
+                jsr copy_rom
+                jsr swap_char_def
 
                 // Scan to get track of all chars on the screen.
                 jsr init_char_ptrs
@@ -58,11 +60,6 @@ start:
                 jsr init_char_ctr
                 jsr find_screen_chars
                 jsr init_char_ptrs
-
-                // Change to lower case letters.
-                //                lda $d018
-                //                ora #$02
-                //                sta $d018
 
                 jsr print_state
 
@@ -583,6 +580,49 @@ copy_char_ptr:
                 lda ($fc), y
                 sta fsm_char_ptr_high, x
                 rts
+
+//------------------------------------------------------------------
+// copy_rom
+// copy char ROM to RAM.
+//------------------------------------------------------------------
+copy_rom:
+                sei
+                lda #$33
+                sta $01
+
+                lda #$d0
+                sta $f9
+                lda #$38
+                sta $ff
+                ldy #$00
+                sty $f8
+                sty $fe
+
+                ldx #$08
+copy_loop:      lda ($f8),y
+                sta ($fe),y
+                iny
+                bne copy_loop
+                inc $f9
+                inc $ff
+                dex
+                bne copy_loop
+
+                lda #$37
+                sta $01
+                cli
+                rts
+
+
+//------------------------------------------------------------------
+// swap_char_def
+//------------------------------------------------------------------
+swap_char_def:
+                lda $d018
+                ora #$0e
+                sta $d018
+                rts
+
 
 //------------------------------------------------------------------
 // memcpy
