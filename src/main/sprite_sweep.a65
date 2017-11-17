@@ -10,9 +10,6 @@
 //------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------
-.label screen_start = $0400
-.label screen_end   = $07e7
-.label space_char   = $20
 
 
 //------------------------------------------------------------------
@@ -27,7 +24,83 @@
 * = $0900     "Sprite sweep test code."
 start:
                 inc $d020
+                jsr show_sprite
                 rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+show_sprite:
+                ldx #$00
+                lda #$30
+l1:             clc
+                adc #$20
+                sta $d000, x
+                inx
+                inx
+                cpx #$10
+                bne l1
+
+                ldx #$00
+                lda #$80
+l3:
+                sta $d001, x
+                inx
+                inx
+                cpx #$10
+                bne l3
+
+                lda #$80
+                sta $07f8
+                sta $07f9
+                sta $07fa
+                sta $07fb
+                sta $07fc
+                sta $07fd
+                sta $07fe
+                sta $07ff
+
+                lda #$ff
+                sta $d015
+
+                lda #$01
+                ldx #$00
+l2:             sta $d027, x
+                inx
+                cpx #$08
+                bne l2
+
+//                lda #$ff
+//                sta $d017
+//                sta $d01d
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+* = $2000     "Sprite defs."
+block_sprite:
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $ff, $ff, $fc
+.byte $00, $00, $00
 
 //======================================================================
 // EOF sprite_sweep.a65
