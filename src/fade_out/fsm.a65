@@ -32,8 +32,9 @@
 .const state_done   = 5
 
 .const init_delay   = 2
+.const delay_steps  = 10
 .const fold_steps   = 4
-.const fold_delay   = 6
+.const fold_delay   = 5
 .const fold_chars   = 4
 .const test_chars   = 20
 
@@ -49,8 +50,8 @@
 //------------------------------------------------------------------
 * = $0900     "Fsm test code."
 start:
-                jsr clear_screen
-                jsr pattern2
+//                jsr clear_screen
+//                jsr pattern2
                 jsr copy_rom
                 jsr swap_char_def
 
@@ -61,10 +62,10 @@ start:
                 jsr find_screen_chars
                 jsr init_char_ptrs
 
-                jsr print_state
+//                jsr print_state
 
-//                jsr init_raster_irq
-//                rts
+                jsr init_raster_irq
+                rts
 
 more_chars:
                 jsr wait_space
@@ -257,8 +258,6 @@ rirq1:
                 inx
                 cpx #fold_chars
                 bne rirq1
-
-                jsr print_state
                 jmp $ea31
 
 //------------------------------------------------------------------
@@ -737,8 +736,8 @@ fsm_state:
 .byte state_init, state_init
 
 fsm_delay_ctr:
-.byte init_delay + 0, init_delay + 3
-.byte init_delay + 6, init_delay + 9
+.byte init_delay + 0, init_delay + delay_steps
+.byte init_delay + 2 * delay_steps, init_delay + 3 * delay_steps
 
 fsm_mod_char:
 .byte $fb, $fc, $fd, $fe
