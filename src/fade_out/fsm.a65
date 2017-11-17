@@ -33,7 +33,7 @@
 
 .const init_delay   = 2
 .const fold_steps   = 4
-.const fold_delay   = 5
+.const fold_delay   = 6
 .const fold_chars   = 4
 .const test_chars   = 20
 
@@ -392,28 +392,50 @@ get_next_char:
 //------------------------------------------------------------------
 fold_char:
                 jsr set_def_dest_ptr
-                ldy #$03
-fc1:
+                // 2 -> 3
+                ldy #$02
                 lda ($fe), y
                 iny
                 sta ($fe), y
-                dey
-                dey
-                bne fc1
+
+                // 1 -> 2
+                ldy #$01
+                lda ($fe), y
+                iny
+                sta ($fe), y
+
+                // 0 -> 1
+                ldy #$00
+                lda ($fe), y
+                iny
+                sta ($fe), y
+
+                // clear 0
+                ldy #$00
                 lda #$00
                 sta ($fe), y
 
+                // 5 -> 4
                 ldy #$05
-fc2:
                 lda ($fe), y
                 dey
                 sta ($fe), y
-                iny
-                iny
-                cpy #$08
-                bne fc2
-                lda #00
+
+                // 6 -> 5
+                ldy #$06
+                lda ($fe), y
+                dey
+                sta ($fe), y
+
+                // 7 -> 6
                 ldy #$07
+                lda ($fe), y
+                dey
+                sta ($fe), y
+
+                // clear 7
+                ldy #$07
+                lda #$00
                 sta ($fe), y
                 rts
 
