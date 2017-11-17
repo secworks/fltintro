@@ -618,8 +618,9 @@ dec_char_ctr:   dec screen_char_ctr
                 beq dcc1
                 rts
 dcc1:
-                dec screen_char_ctr + 1
+                lda screen_char_ctr + 1
                 beq dcc2
+                dec screen_char_ctr + 1
                 rts
 dcc2:
                 lda #$01
