@@ -10,7 +10,12 @@
 //------------------------------------------------------------------
 // Defines
 //------------------------------------------------------------------
-
+.const sprite_pos1 = $38
+.const sprite_pos2 = sprite_pos1 + $2a
+.const raster_pos1 = $10
+.const raster_pos2 = sprite_pos1 + $10
+.const raster_pos3 = $98
+.const fld_lines   = $20
 
 //------------------------------------------------------------------
 // Basic start code.
@@ -23,8 +28,8 @@
 //------------------------------------------------------------------
 * = $0900     "Sprite sweep test code."
 start:
-                inc $d020
                 jsr show_sprites
+                jsr init_raster_irq
                 rts
 
 
@@ -33,24 +38,17 @@ start:
 show_sprites:
                 ldy #$00
                 lda #$18
-set_y_coord:    sta $d000,y
+set_x_coord:    sta $d000,y
                 clc
                 adc #$28
                 iny
                 iny
                 cpy #$10
-                bne set_y_coord
-
-                ldy #$00
-                lda #$80
-set_x_coord:    sta $d001, y
-                iny
-                iny
-                cpy #$10
                 bne set_x_coord
-
                 lda #$c0
                 sta $d010
+
+                jsr set_sprites_y1
 
                 ldy #$00
 set_ptr_color:  lda #$80
@@ -67,8 +65,136 @@ set_ptr_color:  lda #$80
 
                 lda #$ff
                 sta $d015
+                rts
 
 
+//------------------------------------------------------------------
+// init_raster_irq
+// Set up raster interrupt at the beginning of the screen since
+// we may update chars all over the screen.
+//------------------------------------------------------------------
+init_raster_irq:
+                sei
+                lda #$7f
+                sta $dc0d
+                sta $dd0d
+
+                lda #$01
+                sta $d01a
+
+                lda #$1b
+                sta $d011
+
+                lda #raster_pos1
+                sta $d012
+
+                lda #<raster_irq1
+                sta $0314
+                lda #>raster_irq1
+                sta $0315
+
+                lda $dc0d
+                lda $dd0d
+                asl $d019
+                cli
+                rts
+
+
+//------------------------------------------------------------------
+// raster_irq1
+//------------------------------------------------------------------
+raster_irq1:
+                asl $d019
+                lda #<raster_irq2
+                sta $0314
+                lda #>raster_irq2
+                sta $0315
+                lda #raster_pos2
+                sta $d012
+                inc $d020
+                jsr set_sprites_y1
+                dec $d020
+                jmp $ea31
+
+
+//------------------------------------------------------------------
+// raster_irq2
+//------------------------------------------------------------------
+raster_irq2:
+                asl $d019
+                lda #<raster_irq3
+                sta $0314
+                lda #>raster_irq3
+                sta $0315
+                lda #raster_pos3
+                sta $d012
+                inc $d020
+                jsr set_sprites_y2
+                dec $d020
+                jmp $ea31
+
+
+//------------------------------------------------------------------
+// raster_irq3
+//------------------------------------------------------------------
+raster_irq3:
+                asl $d019
+                lda #<raster_irq1
+                sta $0314
+                lda #>raster_irq1
+                sta $0315
+                lda #raster_pos1
+                sta $d012
+                inc $d020
+                jsr fld_routine
+                dec $d020
+                jmp $ea31
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+set_sprites_y1:
+                ldy #$00
+                lda #sprite_pos1
+ssp1_1:         sta $d001, y
+                iny
+                iny
+                cpy #$10
+                bne ssp1_1
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+set_sprites_y2:
+                ldy #$00
+                lda #sprite_pos2
+ssp2_1:         sta $d001, y
+                iny
+                iny
+                cpy #$10
+                bne ssp2_1
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+fld_routine:
+                ldx #fld_lines
+fld_1:
+                lda $d012
+fld_2:          cmp $d012
+                beq fld_2
+
+                clc
+                lda $d011
+                adc #1
+                and #7
+                ora #$18
+                sta $d011
+
+                dex
+                bne fld_1
                 rts
 
 
@@ -96,7 +222,7 @@ block_sprite:
 .byte $ff, $ff, $f0
 .byte $ff, $ff, $f0
 .byte $ff, $ff, $f0
-.byte $00, $00, $00
+.byte $ff, $ff, $f0
 
 //======================================================================
 // EOF sprite_sweep.a65
