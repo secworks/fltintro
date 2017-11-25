@@ -16,6 +16,8 @@
 .label char_rom     = $d000
 .label char_copy    = $3800
 .label space_char   = $20
+.label rowchars     = 40
+.label start_row    = 14
 
 .const state_init   = 1
 .const state_next   = 2
@@ -35,15 +37,17 @@
 //------------------------------------------------------------------
 * = $0900     "Scroller test code."
 start:
-                jsr clear_screen
+                jsr fill_screen
 
 more_chars:
                 jsr wait_space
                 jsr wait_time
-                ldx #$00
-mc1:
                 jsr fsm_update
+                inc $d020
                 jsr print_state
+                jsr movl_rows
+                jmp more_chars
+
                 lda scroll_done
                 bne more_chars
                 rts
@@ -61,6 +65,22 @@ clear1:
                 sta $0700, y
                 iny
                 bne clear1
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+fill_screen:
+                ldy #$00
+                lda #space_char
+fill1:
+                tya
+                sta $0400, y
+                sta $0500, y
+                sta $0600, y
+                sta $0700, y
+                iny
+                bne fill1
                 rts
 
 
@@ -93,7 +113,7 @@ wait1:
                 beq wait2
                 jmp wait_time
 wait2:
-                lda #$04
+                lda #$20
                 sta wait + 1
                 rts
 
@@ -175,6 +195,38 @@ fsm_state_done:
                 rts
 
 
+* = $2000 "move code."
+
+//------------------------------------------------------------------
+// movl_rows
+// Move num_rows one char left starting with row start_row.
+//------------------------------------------------------------------
+movl_rows:
+                ldy #$00
+movl1:
+                lda screen_start + ((rowchars) * (start_row + 0)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 0)), y
+                lda screen_start + ((rowchars) * (start_row + 1)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 1)), y
+                lda screen_start + ((rowchars) * (start_row + 2)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 2)), y
+                lda screen_start + ((rowchars) * (start_row + 3)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 3)), y
+                lda screen_start + ((rowchars) * (start_row + 4)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 4)), y
+                lda screen_start + ((rowchars) * (start_row + 5)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 5)), y
+                lda screen_start + ((rowchars) * (start_row + 6)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 6)), y
+                lda screen_start + ((rowchars) * (start_row + 7)) + 1, y
+                sta screen_start + ((rowchars) * (start_row + 7)), y
+
+                iny
+                cpy #rowchars - 1
+                bne movl1
+                rts
+
+
 //------------------------------------------------------------------
 // State and counters for the FSM.
 //------------------------------------------------------------------
@@ -182,6 +234,13 @@ fsm_state:
 .byte state_init
 
 scroll_done:
+.byte $00
+
+
+srolltext:
+.encoding "screencode_mixed"
+.text "This is a test scrolltext for the FairLight intro. "
+.text "code, design by Watchman. Logo by Ogami.           "
 .byte $00
 
 //======================================================================
