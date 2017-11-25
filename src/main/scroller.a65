@@ -1,0 +1,189 @@
+//======================================================================
+// scroller.a65
+// ------------
+// Big, proportinal scoller for the main part.
+//
+//
+// (c) 2017 Joachim Strömbergson
+//======================================================================
+
+//------------------------------------------------------------------
+// Defines
+//------------------------------------------------------------------
+.label screen_start = $0400
+.label screen_end   = $07e7
+.label screen_base  = $0772
+.label char_rom     = $d000
+.label char_copy    = $3800
+.label space_char   = $20
+
+.const state_init   = 1
+.const state_next   = 2
+.const state_update = 3
+.const state_scroll = 4
+.const state_done   = 5
+
+
+//------------------------------------------------------------------
+// Basic start code.
+//------------------------------------------------------------------
+.pc = $0801     "Basic uppstart."
+	        :BasicUpstart(start)
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+* = $0900     "Scroller test code."
+start:
+                jsr clear_screen
+
+more_chars:
+                jsr wait_space
+                jsr wait_time
+                ldx #$00
+mc1:
+                jsr fsm_update
+                jsr print_state
+                lda scroll_done
+                bne more_chars
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+clear_screen:
+                ldy #$00
+                lda #space_char
+clear1:
+                sta $0400, y
+                sta $0500, y
+                sta $0600, y
+                sta $0700, y
+                iny
+                bne clear1
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+print_state:
+                rts
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+wait_space:
+                lda #$7f
+                sta $dc00
+                lda $dc01
+                and #$10
+                bne wait_space
+                rts
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+wait_time:
+                dec wait
+                lda wait
+                beq wait1
+                jmp wait_time
+wait1:
+                dec wait + 1
+                lda wait + 1
+                beq wait2
+                jmp wait_time
+wait2:
+                lda #$04
+                sta wait + 1
+                rts
+
+wait:
+.byte $00, $00
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+* = $1000 "FSM code and state."
+
+
+//------------------------------------------------------------------
+// fsm_update
+// Perform the fsm update logic. Basically check state and
+// jump to corresponding state handler.
+//------------------------------------------------------------------
+fsm_update:
+                lda fsm_state
+                cmp #state_init
+                bne not_init
+                jmp fsm_state_init
+not_init:
+                cmp #state_next
+                bne not_next
+                jmp fsm_state_next
+not_next:
+                cmp #state_update
+                bne not_update
+                jmp fsm_state_update
+not_update:
+                cmp #state_scroll
+                bne not_scroll
+                jmp fsm_state_scroll
+not_scroll:
+                cmp #state_done
+                bne not_done
+                jmp fsm_state_done
+not_done:
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_init
+// Initial state of fsm. Wait a delay number of iterations.
+//------------------------------------------------------------------
+fsm_state_init:
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_next
+// We should try to grab the next char to modify unless done.
+//------------------------------------------------------------------
+fsm_state_next:
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_update
+// There is at least one more char. Update the char pointers etc.
+//------------------------------------------------------------------
+fsm_state_update:
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_scroll
+//------------------------------------------------------------------
+fsm_state_scroll:
+                rts
+
+
+//------------------------------------------------------------------
+// fsm_state_done
+// All chars has been processed. We are done.
+//------------------------------------------------------------------
+fsm_state_done:
+                rts
+
+
+//------------------------------------------------------------------
+// State and counters for the FSM.
+//------------------------------------------------------------------
+fsm_state:
+.byte state_init
+
+scroll_done:
+.byte $00
+
+//======================================================================
+// EOF scroller.a65
+//======================================================================
