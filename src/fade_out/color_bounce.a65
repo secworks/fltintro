@@ -9,7 +9,7 @@
 //------------------------------------------------------------------
 // Defines.
 //------------------------------------------------------------------
-.const top_line    = $38
+.const top_line    = $a8
 .const bottom_line = $f0
 .const end_line    = $40
 
@@ -36,6 +36,8 @@ forever:
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 init_code:
+                lda #top_line
+                sta raster_line
                 rts
 
 
@@ -55,13 +57,17 @@ init_raster_irq:
                 lda #$1b
                 sta $d011
 
-                lda #top_line
+                lda #$00
                 sta $d012
+                lda #$1b
+                sta $d011
 
-                lda #<color_rirq
+                lda #<top_rirq
                 sta $0314
-                lda #>color_rirq
+                lda #>top_rirq
                 sta $0315
+                lda #$00
+                sta $d015
 
                 lda $dc0d
                 lda $dd0d
@@ -70,37 +76,107 @@ init_raster_irq:
 
 
 //------------------------------------------------------------------
-// color_rirq
+// Top line irq.
 //------------------------------------------------------------------
-color_rirq:
-                asl $d019
-
-                lda $d012
-crirq1:         cmp $d012
-                beq crirq1
-
-                lda #$00
-                sta $d020
-                sta $d021
-
-                ldx #$00
-crirq3:         lda $d012
-crirq2:         cmp $d012
-                beq crirq2
-                inx
-                cpx #$10
-                bne crirq3
-
-                lda $d012
-crirq4:         cmp $d012
-                beq crirq4
-
+top_rirq:
                 lda #$0e
                 sta $d020
                 lda #$06
                 sta $d021
-
+                lda raster_line
+                sta $d012
+                lda #$1b
+                sta $d011
+                lda #<rirq1
+                sta $0314
+                lda #>rirq1
+                sta $0315
+                asl $d019
                 jmp $ea31
+
+
+//------------------------------------------------------------------
+// rirq1
+// First part of dooraster irq. Falls into rirq2
+//------------------------------------------------------------------
+rirq1:
+                asl $d019
+
+                clc
+                inc $d012
+                lda #<rirq2
+                sta $0314
+                lda #>rirq2
+                sta $0315
+                cli
+
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+rirq2:
+                ldx #$00
+r2_l2:
+                lda colorbar, x
+                ldy $d012
+r2_l1:
+                cpy $d012
+                beq r2_l1
+                sta $d020
+                sta $d021
+                inx
+                cpx #$08
+                bne r2_l2
+
+                lda #<top_rirq
+                sta $0314
+                lda #>top_rirq
+                sta $0315
+                lda #$00
+                sta $d012
+                asl $d019
+                jmp $ea31
+
+
+//------------------------------------------------------------------
+//------------------------------------------------------------------
+raster_line:
+.byte $38
+
+colorbar:
+.byte $0b, $0c, $04, $07, $01, $0f, $0c, $00
 
 //======================================================================
 // color_bounce.a65
