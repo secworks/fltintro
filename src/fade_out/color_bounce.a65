@@ -12,6 +12,7 @@
 .const top_line    = $a8
 .const bottom_line = $f0
 .const end_line    = $40
+.const spritedef   = $20000
 
 
 //------------------------------------------------------------------
@@ -28,6 +29,7 @@ start:
                 sei
                 jsr init_code
                 jsr init_raster_irq
+                jsr init_sprite
                 cli
 forever:
                 jmp forever
@@ -74,6 +76,27 @@ init_raster_irq:
                 asl $d019
                 rts
 
+init_sprite:
+                lda #$80
+                sta $d000
+                lda #$70
+                sta $d001
+                lda spritedef / 64
+                sta $07f8
+                lda #$01
+                sta $d027
+                lda #$01
+                sta $d01d
+                sta $d017
+                sta $d015
+                ldy #$00
+                lda #$ff
+spr1:
+                sta spritedef, y
+                iny
+                cpy #$40
+                bne spr1
+                rts
 
 //------------------------------------------------------------------
 // Top line irq.
