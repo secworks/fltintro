@@ -2,6 +2,13 @@
 // color_bounce.a65
 // ----------------
 // Transition from fade out to main. A bouncing color bar.
+// Strategy: One IRQ at the extreme bottom and then one IRQ that
+// moves up and down.
+//
+//
+// 0x120 is invisible.
+// 0x137 is the largest raster line.
+//
 //
 // (c) 2017 Joachim Strömbergson
 //======================================================================
@@ -12,7 +19,7 @@
 .const top_line    = $a8
 .const bottom_line = $f0
 .const end_line    = $40
-.const spritedef   = $30000
+.const spritedef   = $1000
 
 
 //------------------------------------------------------------------
@@ -24,7 +31,7 @@
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
-* = $0900     "Effect driver code."
+* = $2000     "Effect driver code."
 start:
                 sei
                 jsr clear_screen
@@ -60,14 +67,14 @@ init_raster_irq:
                 lda #$01
                 sta $d01a
 
-                lda #$80
+                lda #$10
                 sta $d012
-                lda #$1b
+                lda #$9b
                 sta $d011
 
-                lda #<top_rirq
+                lda #<bottom_rirq
                 sta $0314
-                lda #>top_rirq
+                lda #>bottom_rirq
                 sta $0315
 
                 lda $dc0d
@@ -80,12 +87,12 @@ init_raster_irq:
 init_sprite:
                 lda #$20
                 sta $d000
-                lda bar_start
+                lda #$60
                 sta $d001
-                lda spritedef / 64
+                lda #$10
                 sta $07f8
                 lda #$01
-                sta $d027
+                sta $d017
                 lda #$01
                 sta $d015
 
@@ -98,6 +105,25 @@ spr1:
                 bne spr1
                 rts
 
+//------------------------------------------------------------------
+// bottom_irq sets background to black and plays music.
+//------------------------------------------------------------------
+bottom_rirq:
+                asl $d019
+                lda #$00
+                sta $d020
+                sta $d021
+
+                lda #<top_rirq
+                sta $0314
+                lda #>top_rirq
+                sta $0315
+
+                lda #$60
+                sta $d012
+                lda #$1b
+                sta $d011
+                jmp $ea31
 
 //------------------------------------------------------------------
 // Top line irq.
@@ -105,75 +131,46 @@ spr1:
 top_rirq:
                 asl $d019
                 ldy #$00
-                lda $d012
-                clc
-                adc #$01
+                ldx #$00
+                lda color_bar, x
+                tax
 tl1:
-                cmp $d012
-                bne tl1
-                sty $d020
-                sty $d021
-
-                lda bar_start
-                sta $d012
-                lda #$1b
-                sta $d011
-
-                lda #main_rirq
-                sta $0314
-                lda #>main_rirq
-                sta $0315
-                jmp $ea31
-
-
-//------------------------------------------------------------------
-// Main line irq.
-//------------------------------------------------------------------
-main_rirq:
-                asl $d019
-                ldy #$00
-rt2:
-                sty ctr
-                lda colorbar, y
-                tay
                 lda $d012
-                clc
-                adc #$01
-rl1:
+tw2:
                 cmp $d012
-                bne rl1
-                sty $d020
-                sty $d021
-                ldy ctr
-                iny
-                cpy #$0d
-                bne rt2
-                ldx #$06
-                ldy #$0e
-                lda $d012
-                clc
-                adc #$01
-rl3:
-                cmp $d012
-                bne rl3
-                sty $d020
+                beq tw2
+                inc $02
+                stx $d020
                 stx $d021
+                iny
+                cpy #$10
+                beq tdone
+                tya
+                tax
+                lda color_bar, x
+                tax
+                jmp tl1
+tdone:
+                lda #$0e
+                sta $d020
+                lda #$06
+                sta $d021
 
-                lda #$00
+                lda #$28
                 sta $d012
-                lda #$1b
+                lda #$9b
                 sta $d011
 
-                lda #top_rirq
+                lda #<bottom_rirq
                 sta $0314
-                lda #>top_rirq
+                lda #>bottom_rirq
                 sta $0315
                 jmp $ea31
 
 //------------------------------------------------------------------
 //------------------------------------------------------------------
 
-colorbar:
+color_bar:
 .byte $0b, $0c, $02, $04, $07, $0f, $01, $01
 .byte $0f, $07, $04, $02, $0c, $0b, $00
 
