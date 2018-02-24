@@ -1,5 +1,5 @@
 import math
-num_elements = 256
+num_elements = 32
 max_val = 0x110
 fraction = (math.pi / 2) / num_elements
 
