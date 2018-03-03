@@ -19,6 +19,8 @@
 .const top_line    = $a8
 .const bottom_line = $f0
 .const end_line    = $40
+.const upper       = $80
+.const lower       = $f0
 .const spritedef   = $1000
 
 
@@ -179,12 +181,6 @@ bar_start:
 
 direction:
 .byte §00
-
-upper:
-.byte §80
-
-lower:
-.byte §f0
 
 
 bar_pos_high:
